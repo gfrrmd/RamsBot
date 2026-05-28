@@ -6,7 +6,7 @@ from database import get_auto_dl_view_once, has_used_trial
 
 def main_keyboard(uid):
     rows = [
-        [InlineKeyboardButton("✨ Mulai Setup Bot", callback_data="menu_setup"), InlineKeyboardButton("⌛️ Status Langganan", callback_data="menu_subscription")],
+        [InlineKeyboardButton("✨ Mulai Setup Bot", callback_data="menu_setup"), InlineKeyboardButton("👤 Status Akun", callback_data="menu_subscription")],
         [InlineKeyboardButton("🎯 Fitur VIP", callback_data="menu_fitur"), InlineKeyboardButton("💎 Beli VIP", callback_data="menu_beli")],
     ]
     if uid == ADMIN_ID:

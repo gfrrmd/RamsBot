@@ -35,8 +35,6 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
                 parse_mode="Markdown"
             )
         else:
-            # Semua user (VIP, trial, maupun belum subscribe) langsung tampil ToS dulu
-            # Cek VIP/trial dilakukan SETELAH user klik Saya Setuju (di setup_agree_callback)
             await query.edit_message_text(
                 "📋 *Kebijakan dan Ketentuan Penggunaan*\n\n"
                 "Sebelum melanjutkan, harap baca dan pahami hal berikut:\n\n"
@@ -52,7 +50,9 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     if data == "menu_subscription":
-        await query.edit_message_text(build_subscription_text(uid), parse_mode="Markdown", reply_markup=main_keyboard(uid)); return
+        user = query.from_user
+        text = build_subscription_text(uid, full_name=user.full_name, username=user.username)
+        await query.edit_message_text(text, parse_mode="Markdown", reply_markup=main_keyboard(uid)); return
     if data == "menu_fitur":
         await query.edit_message_text("✨ *Fitur VIP*\n\nPilih fitur di bawah:", reply_markup=fitur_vip_keyboard(), parse_mode="Markdown"); return
     if data == "menu_beli":
