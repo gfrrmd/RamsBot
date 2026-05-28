@@ -15,24 +15,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clear_user_state(uid)
     upsert_user(uid, user.username, user.full_name)
 
-    session = get_user_session(uid)
-    client = active_clients.get(uid)
-    if session and client and client.is_connected():
-        status = "✅ *Aktif*"
-    elif session:
-        status = "⚠️ *Session tersimpan, client belum terhubung*"
-    else:
-        status = "❌ *Belum diatur*"
-
-    if is_subscribed(uid):
-        info = get_subscription_info(uid)
-        expired = datetime.fromisoformat(info[1])
-        sub_status = f"\n💳 Langganan: ✅ Aktif s/d *{expired.strftime('%d %b %Y')}*"
-    else:
-        sub_status = "\n💳 Langganan: ❌ Tidak aktif"
+    first_name = user.first_name or "Kamu"
 
     await update.message.reply_text(
-        f"👋 *Selamat datang di Rams VIP Bot!*\n\nStatus session: {status}{sub_status}\n\nPilih menu di bawah:",
+        f"Halo, {first_name}! 👋\n"
+        f"Aku adalah Bot Telegram pribadi dengan berbagai fitur eksklusif. ✨\n\n"
+        f"Dengan bot ini kamu bisa *Download Media Timer* 📥, *Download Media Channel Private* 📣, "
+        f"*Download Story* 🎥, *Broadcast Pesan* 📢, dan masih banyak lagi 🚀\n\n"
+        f"👇 Pilih menu di bawah untuk mulai.",
         parse_mode="Markdown",
         reply_markup=main_keyboard(uid),
     )
