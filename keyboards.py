@@ -17,7 +17,7 @@ def main_keyboard(uid):
 def tos_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("✅ Saya Setuju", callback_data="setup_agree")],
-        [InlineKeyboardButton("🔙 Kembali", callback_data="menu_back"), InlineKeyboardButton("❌ Tutup", callback_data="menu_back")],
+        [InlineKeyboardButton("🔙 Kembali", callback_data="menu_back"), InlineKeyboardButton("❌ Tutup", callback_data="tos_close")],
     ])
 
 

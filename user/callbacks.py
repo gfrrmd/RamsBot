@@ -18,6 +18,13 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     if data == "menu_back":
         await query.edit_message_text("🏠 *Menu Utama*", reply_markup=main_keyboard(uid), parse_mode="Markdown"); return
 
+    if data == "tos_close":
+        try:
+            await query.delete_message()
+        except Exception:
+            await query.edit_message_text("❌ Ditutup.", reply_markup=None)
+        return
+
     if data == "menu_setup":
         has_session = bool(get_user_session(uid))
         if has_session:
