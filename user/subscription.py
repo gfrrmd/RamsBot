@@ -28,16 +28,13 @@ def _format_uptime(uid: int) -> str:
 def build_subscription_text(uid: int, full_name: str = None, username: str = None) -> str:
     row = get_subscription_info(uid)
 
-    # Info user
     name_str = full_name or "—"
     username_str = f"@{username}" if username else "—"
 
-    # Status bot (session aktif atau tidak)
     client = active_clients.get(uid)
     bot_active = client and client.is_connected()
     status_bot = "Aktif ✅" if bot_active else "Tidak Aktif ❌"
 
-    # Uptime
     uptime_str = _format_uptime(uid)
 
     if not row:
@@ -61,13 +58,12 @@ def build_subscription_text(uid: int, full_name: str = None, username: str = Non
             sisa_detik = max(int((exp - now).total_seconds()), 0)
             sub_active = is_active and sisa_detik > 0
             plan_str = "Trial"
-            exp_str = exp.strftime("%d %b %Y, %H:%M WIB")
         else:
             sisa = (exp.date() - now.date()).days
             sub_active = is_active and sisa >= 0
             plan_str = "VIP 💎"
-            exp_str = exp.strftime("%d %b %Y")
 
+        exp_str = exp.strftime("%d %b %Y, %H:%M WIB")
         status_bot_final = "Aktif ✅" if bot_active else "Tidak Aktif ❌"
 
         return (
