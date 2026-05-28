@@ -125,13 +125,18 @@ def activate_subscription(user_id, days=30):
     conn.commit(); conn.close(); return expired
 
 
-def activate_trial(user_id, minutes=15):
+# Ubah nilai minutes di sini untuk mengatur durasi trial
+TRIAL_DURATION_MINUTES = 15
+
+
+def activate_trial(user_id):
+    minutes = TRIAL_DURATION_MINUTES
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT trial_used FROM users WHERE user_id=%s", (user_id,))
     row = c.fetchone()
     if row and row[0]:
         conn.close()
-        return False, None
+        return False, None, minutes
     c.execute("UPDATE users SET trial_used=1 WHERE user_id=%s", (user_id,))
     now = datetime.now()
     expired = now + timedelta(minutes=minutes)
@@ -141,7 +146,7 @@ def activate_trial(user_id, minutes=15):
         ON CONFLICT(user_id) DO UPDATE SET paid_at=EXCLUDED.paid_at, expired_at=EXCLUDED.expired_at, is_active=1, plan='trial'
     """, (user_id, now.isoformat(), expired.isoformat()))
     conn.commit(); conn.close()
-    return True, expired
+    return True, expired, minutes
 
 
 def has_used_trial(user_id) -> bool:
