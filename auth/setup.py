@@ -9,7 +9,7 @@ from auth.states import CODE_STEP, PASSWORD_STEP, PHONE_STEP, temp_store
 from client_manager import active_clients, build_client, dl_locks, _start_time
 from config import API_ID, API_HASH
 from database import activate_trial, is_subscribed, save_user_session
-from keyboards import main_keyboard, not_subscribed_keyboard
+from keyboards import main_keyboard, not_subscribed_keyboard, trial_activated_keyboard
 from user.download import register_download_handler
 from user.copy import register_copy_handler
 from user.story import register_story_handler
@@ -73,13 +73,23 @@ async def setup_try_trial_callback(update: Update, context: ContextTypes.DEFAULT
         )
         return ConversationHandler.END
     exp_str = expired.strftime("%H:%M:%S")
+    # Tampil konfirmasi trial dulu, user klik Lanjut Setup untuk lanjut ke input nomor HP
     await update.callback_query.edit_message_text(
-        f"🎉 *Free Trial aktif!*\n\n"
+        f"🎉 *Free Trial Aktif!*\n\n"
         f"⏳ Durasi: *30 menit*\n"
         f"🕐 Berakhir pukul: *{exp_str}*\n\n"
-        "Sekarang lanjut setup session Telegram kamu.",
+        f"Kamu sekarang bisa menikmati semua fitur bot.\n"
+        f"Klik tombol di bawah untuk melanjutkan setup session.",
         parse_mode="Markdown",
+        reply_markup=trial_activated_keyboard(),
     )
+    return ConversationHandler.END
+
+
+async def setup_continue_after_trial_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.callback_query.from_user.id
+    await update.callback_query.answer()
+    temp_store.pop(uid, None)
     return await _ask_phone_number(update, context)
 
 

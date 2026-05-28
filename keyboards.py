@@ -30,6 +30,12 @@ def not_subscribed_keyboard(uid):
     return InlineKeyboardMarkup(rows)
 
 
+def trial_activated_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("➡️ Lanjut Setup", callback_data="setup_continue_after_trial")],
+    ])
+
+
 def admin_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📦 Backup DB", callback_data="admin_backup"), InlineKeyboardButton("♻️ Restore DB", callback_data="admin_restore")],
