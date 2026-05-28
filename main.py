@@ -6,7 +6,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Conv
 from admin.callbacks import admin_callback_handler, admin_message_handler
 from admin.gift import cmd_gift
 from admin.vip import cmd_revoke
-from auth.setup import cmd_setup, register_telethon_handlers, setup_agree_callback, setup_code, setup_password, setup_phone
+from auth.setup import cmd_setup, register_telethon_handlers, setup_agree_callback, setup_try_trial_callback, setup_code, setup_password, setup_phone
 from auth.states import CODE_STEP, PASSWORD_STEP, PHONE_STEP
 from client_manager import _start_time, active_clients, build_client, dl_locks
 from config import API_ID, API_HASH, BOT_TOKEN
@@ -54,6 +54,7 @@ def main():
         entry_points=[
             CommandHandler("setup", cmd_setup),
             CallbackQueryHandler(setup_agree_callback, pattern="^setup_agree$"),
+            CallbackQueryHandler(setup_try_trial_callback, pattern="^setup_try_trial$"),
         ],
         states={
             PHONE_STEP: [MessageHandler(filters.TEXT & ~filters.COMMAND, setup_phone)],
