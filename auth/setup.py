@@ -92,8 +92,7 @@ async def setup_try_trial_callback(update: Update, context: ContextTypes.DEFAULT
         f"🎉 *Free Trial Aktif!*\n\n"
         f"⏳ Durasi: *{durasi_str}*\n"
         f"🕐 Berakhir: *{exp_str}*\n\n"
-        f"Kamu sekarang bisa menikmati semua fitur bot.\n"
-        f"Klik tombol di bawah untuk melanjutkan setup session.",
+        f"Kamu sekarang bisa menikmati semua fitur bot. Klik tombol di bawah untuk melanjutkan setup session.",
         parse_mode="Markdown",
         reply_markup=trial_activated_keyboard(),
     )
@@ -131,8 +130,8 @@ async def setup_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📨 Kode OTP berhasil dikirim ke Telegram kamu!\n\n"
             "*Langkah 2/3 — Kode OTP 🔢*\n\n"
             "Ketik kode dengan spasi di antara setiap angka.\n\n"
-            "Contoh Benar: `1 2 3 4 5`\n"
-            "Contoh Salah: `12345`\n\n"
+            "✅ Contoh Benar: `1 2 3 4 5`\n"
+            "❌ Contoh Salah: `12345`\n\n"
             "Kirim kode OTP kamu, atau /cancel untuk batal:",
             parse_mode="Markdown",
         )
