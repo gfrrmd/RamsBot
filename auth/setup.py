@@ -1,5 +1,6 @@
 import asyncio
 import time
+from datetime import timezone, timedelta
 
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
@@ -16,6 +17,8 @@ from user.story import register_story_handler
 from user.auto_dl import register_auto_dl_handler
 from user.ping import register_ping_handler
 from user.broadcast import register_broadcast_handler
+
+WIB = timezone(timedelta(hours=7))
 
 
 def register_telethon_handlers(client, user_id: int):
@@ -63,7 +66,7 @@ async def setup_agree_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 async def setup_try_trial_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.callback_query.from_user.id
     await update.callback_query.answer()
-    success, expired = activate_trial(uid, minutes=30)
+    success, expired, minutes = activate_trial(uid)
     if not success:
         await update.callback_query.edit_message_text(
             "⚠️ *Trial sudah pernah digunakan.*\n\n"
@@ -72,12 +75,25 @@ async def setup_try_trial_callback(update: Update, context: ContextTypes.DEFAULT
             reply_markup=not_subscribed_keyboard(uid),
         )
         return ConversationHandler.END
-    exp_str = expired.strftime("%H:%M:%S")
-    # Tampil konfirmasi trial dulu, user klik Lanjut Setup untuk lanjut ke input nomor HP
+
+    # Convert ke WIB (UTC+7)
+    expired_wib = expired.astimezone(WIB)
+
+    # Format durasi tampilan
+    if minutes >= 1440:
+        hari = minutes // 1440
+        durasi_str = f"{hari} hari"
+    elif minutes >= 60:
+        jam = minutes // 60
+        durasi_str = f"{jam} jam"
+    else:
+        durasi_str = f"{minutes} menit"
+
+    exp_str = expired_wib.strftime("%H:%M WIB, %d %b %Y")
     await update.callback_query.edit_message_text(
         f"🎉 *Free Trial Aktif!*\n\n"
-        f"⏳ Durasi: *30 menit*\n"
-        f"🕐 Berakhir pukul: *{exp_str}*\n\n"
+        f"⏳ Durasi: *{durasi_str}*\n"
+        f"🕐 Berakhir: *{exp_str}*\n\n"
         f"Kamu sekarang bisa menikmati semua fitur bot.\n"
         f"Klik tombol di bawah untuk melanjutkan setup session.",
         parse_mode="Markdown",
