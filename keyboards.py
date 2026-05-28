@@ -6,12 +6,19 @@ from database import get_auto_dl_view_once
 
 def main_keyboard(uid):
     rows = [
-        [InlineKeyboardButton("⚙️ Setup Session", callback_data="menu_setup"), InlineKeyboardButton("⌛️ Status Langganan", callback_data="menu_subscription")],
-        [InlineKeyboardButton("✨ Fitur VIP", callback_data="menu_fitur"), InlineKeyboardButton("💎 Beli VIP", callback_data="menu_beli")],
+        [InlineKeyboardButton("✨ Mulai Setup Bot", callback_data="menu_setup"), InlineKeyboardButton("⌛️ Status Langganan", callback_data="menu_subscription")],
+        [InlineKeyboardButton("🎯 Fitur VIP", callback_data="menu_fitur"), InlineKeyboardButton("💎 Beli VIP", callback_data="menu_beli")],
     ]
     if uid == ADMIN_ID:
         rows.append([InlineKeyboardButton("👤 Menu Admin", callback_data="menu_admin")])
     return InlineKeyboardMarkup(rows)
+
+
+def tos_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Saya Setuju", callback_data="setup_agree")],
+        [InlineKeyboardButton("🔙 Kembali", callback_data="menu_back"), InlineKeyboardButton("❌ Tutup", callback_data="menu_back")],
+    ])
 
 
 def admin_keyboard():

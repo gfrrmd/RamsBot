@@ -27,27 +27,43 @@ def register_telethon_handlers(client, user_id: int):
     register_broadcast_handler(client, user_id)
 
 
+async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kirim pesan minta nomor HP. Bisa dipanggil dari /setup maupun callback setup_agree."""
+    text = (
+        "⚙️ *Setup Session Telegram*\n\n"
+        "Proses ini menghubungkan akun Telegram kamu ke bot.\n"
+        "Ketik /cancel kapan saja untuk membatalkan.\n\n"
+        "━━━━━━━━━━━━━━━━━━━\n"
+        "*Langkah 1 dari 3 — Nomor HP*\n\n"
+        "Masukkan nomor HP yang terdaftar di akun Telegram kamu.\n"
+        "Contoh: `+6281234567890`\n\n"
+        "Kirim nomor HP kamu, atau /cancel untuk batal:"
+    )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, parse_mode="Markdown")
+    else:
+        await update.message.reply_text(text, parse_mode="Markdown")
+    return PHONE_STEP
+
+
+async def setup_agree_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Dipanggil saat user klik tombol Saya Setuju pada layar TOS."""
+    uid = update.callback_query.from_user.id
+    await update.callback_query.answer()
+    temp_store.pop(uid, None)
+    return await _ask_phone_number(update, context)
+
+
 async def cmd_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not is_subscribed(uid):
         await update.message.reply_text(
-            "\u274c Kamu belum berlangganan VIP.\nHubungi admin untuk berlangganan.",
+            "❌ Kamu belum berlangganan VIP.\nHubungi admin untuk berlangganan.",
             reply_markup=main_keyboard(uid)
         )
         return ConversationHandler.END
     temp_store.pop(uid, None)
-    await update.message.reply_text(
-        "\U0001f527 *Setup Session Telegram*\n\n"
-        "Proses ini menghubungkan akun Telegram kamu ke bot.\n"
-        "Ketik /cancel kapan saja untuk membatalkan.\n\n"
-        "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
-        "*Langkah 1 dari 3 - Nomor HP*\n\n"
-        "Masukkan nomor HP yang terdaftar di akun Telegram kamu.\n"
-        "Contoh: `+6281234567890`\n\n"
-        "Kirim nomor HP kamu, atau /cancel untuk batal:",
-        parse_mode="Markdown",
-    )
-    return PHONE_STEP
+    return await _ask_phone_number(update, context)
 
 
 async def setup_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -59,9 +75,9 @@ async def setup_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = await client.send_code_request(phone)
         temp_store[uid] = {"phone": phone, "phone_hash": result.phone_code_hash, "client": client}
         await update.message.reply_text(
-            "\U0001f4e8 Kode OTP berhasil dikirim ke Telegram kamu!\n\n"
-            "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
-            "*Langkah 2 dari 3 - Kode OTP*\n\n"
+            "📨 Kode OTP berhasil dikirim ke Telegram kamu!\n\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "*Langkah 2 dari 3 — Kode OTP*\n\n"
             "Ketik kode dengan spasi di antara setiap angka.\nContoh: `1 2 3 4 5`\n\n"
             "Kirim kode OTP kamu, atau /cancel untuk batal:",
             parse_mode="Markdown",
@@ -71,7 +87,7 @@ async def setup_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await client.disconnect()
         temp_store.pop(uid, None)
         await update.message.reply_text(
-            f"\u274c Gagal mengirim OTP: {e}\n\nSilakan /setup ulang dari awal.",
+            f"❌ Gagal mengirim OTP: {e}\n\nSilakan /setup ulang dari awal.",
             reply_markup=main_keyboard(uid)
         )
         return ConversationHandler.END
@@ -86,9 +102,9 @@ async def setup_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await client.sign_in(data["phone"], code, phone_code_hash=data["phone_hash"])
     except SessionPasswordNeededError:
         await update.message.reply_text(
-            "\U0001f510 *Akun ini mengaktifkan verifikasi 2 langkah (2FA)*\n\n"
-            "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
-            "*Langkah 3 dari 3 - Password 2FA*\n\n"
+            "🔐 *Akun ini mengaktifkan verifikasi 2 langkah (2FA)*\n\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "*Langkah 3 dari 3 — Password 2FA*\n\n"
             "Masukkan password 2FA Telegram kamu, atau /cancel untuk batal:",
             parse_mode="Markdown",
         )
@@ -96,12 +112,12 @@ async def setup_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except (PhoneCodeInvalidError, PhoneCodeExpiredError):
         await client.disconnect()
         temp_store.pop(uid, None)
-        await update.message.reply_text("\u274c Kode OTP salah atau sudah kadaluarsa. Silakan /setup ulang.")
+        await update.message.reply_text("❌ Kode OTP salah atau sudah kadaluarsa. Silakan /setup ulang.")
         return ConversationHandler.END
     except Exception as e:
         await client.disconnect()
         temp_store.pop(uid, None)
-        await update.message.reply_text(f"\u274c Terjadi error: {e}\n\nSilakan /setup ulang.")
+        await update.message.reply_text(f"❌ Terjadi error: {e}\n\nSilakan /setup ulang.")
         return ConversationHandler.END
     return await _finish_setup(update, uid, data, client)
 
@@ -115,7 +131,7 @@ async def setup_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await client.disconnect()
         temp_store.pop(uid, None)
-        await update.message.reply_text(f"\u274c Password 2FA salah: {e}\n\nSilakan /setup ulang.")
+        await update.message.reply_text(f"❌ Password 2FA salah: {e}\n\nSilakan /setup ulang.")
         return ConversationHandler.END
     return await _finish_setup(update, uid, data, client)
 
@@ -136,8 +152,8 @@ async def _finish_setup(update, uid, data, client):
 
     temp_store.pop(uid, None)
     await update.message.reply_text(
-        "\u2705 *Setup berhasil! Session kamu sudah aktif.*\n\n"
-        "\u26a0\ufe0f *PENTING: Jangan logout dari sesi ini!*\n\n"
+        "✅ *Setup berhasil! Session kamu sudah aktif.*\n\n"
+        "⚠️ *PENTING: Jangan logout dari sesi ini!*\n\n"
         "Bot bekerja menggunakan sesi login akun Telegram kamu yang sudah tersimpan.",
         parse_mode="Markdown",
         reply_markup=main_keyboard(uid),
