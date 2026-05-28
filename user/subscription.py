@@ -2,7 +2,7 @@ import time
 from datetime import datetime, timezone, timedelta
 
 from client_manager import active_clients, _start_time
-from database import get_subscription_info, get_user_info
+from database import get_subscription_info
 
 WIB = timezone(timedelta(hours=7))
 
