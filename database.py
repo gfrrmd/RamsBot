@@ -20,6 +20,7 @@ def init_db():
             created_at TEXT
         )
     """)
+    c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_used INTEGER DEFAULT 0")
     c.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             user_id BIGINT PRIMARY KEY,
@@ -109,7 +110,7 @@ def is_subscribed(user_id):
 
 def get_subscription_info(user_id):
     conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT paid_at, expired_at, is_active FROM subscriptions WHERE user_id=%s", (user_id,))
+    c.execute("SELECT paid_at, expired_at, is_active, plan FROM subscriptions WHERE user_id=%s", (user_id,))
     row = c.fetchone(); conn.close(); return row
 
 
@@ -119,9 +120,35 @@ def activate_subscription(user_id, days=30):
     c.execute("""
         INSERT INTO subscriptions (user_id, plan, paid_at, expired_at, is_active)
         VALUES (%s,'vip',%s,%s,1)
-        ON CONFLICT(user_id) DO UPDATE SET paid_at=EXCLUDED.paid_at, expired_at=EXCLUDED.expired_at, is_active=1
+        ON CONFLICT(user_id) DO UPDATE SET paid_at=EXCLUDED.paid_at, expired_at=EXCLUDED.expired_at, is_active=1, plan='vip'
     """, (user_id, now.isoformat(), expired.isoformat()))
     conn.commit(); conn.close(); return expired
+
+
+def activate_trial(user_id, minutes=30):
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT trial_used FROM users WHERE user_id=%s", (user_id,))
+    row = c.fetchone()
+    if row and row[0]:
+        conn.close()
+        return False, None
+    c.execute("UPDATE users SET trial_used=1 WHERE user_id=%s", (user_id,))
+    now = datetime.now()
+    expired = now + timedelta(minutes=minutes)
+    c.execute("""
+        INSERT INTO subscriptions (user_id, plan, paid_at, expired_at, is_active)
+        VALUES (%s,'trial',%s,%s,1)
+        ON CONFLICT(user_id) DO UPDATE SET paid_at=EXCLUDED.paid_at, expired_at=EXCLUDED.expired_at, is_active=1, plan='trial'
+    """, (user_id, now.isoformat(), expired.isoformat()))
+    conn.commit(); conn.close()
+    return True, expired
+
+
+def has_used_trial(user_id) -> bool:
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT trial_used FROM users WHERE user_id=%s", (user_id,))
+    row = c.fetchone(); conn.close()
+    return bool(row and row[0])
 
 
 def revoke_subscription(user_id):

@@ -1,7 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import ADMIN_ID
-from database import get_auto_dl_view_once
+from database import get_auto_dl_view_once, has_used_trial
 
 
 def main_keyboard(uid):
@@ -19,6 +19,15 @@ def tos_keyboard():
         [InlineKeyboardButton("✅ Saya Setuju", callback_data="setup_agree")],
         [InlineKeyboardButton("🔙 Kembali", callback_data="menu_back"), InlineKeyboardButton("❌ Tutup", callback_data="tos_close")],
     ])
+
+
+def not_subscribed_keyboard(uid):
+    rows = []
+    if not has_used_trial(uid):
+        rows.append([InlineKeyboardButton("🎟️ Coba Trial Gratis", callback_data="setup_try_trial")])
+    rows.append([InlineKeyboardButton("💎 Beli VIP", callback_data="menu_beli")])
+    rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="menu_back")])
+    return InlineKeyboardMarkup(rows)
 
 
 def admin_keyboard():

@@ -8,8 +8,8 @@ from telethon.errors import PhoneCodeExpiredError, PhoneCodeInvalidError, Sessio
 from auth.states import CODE_STEP, PASSWORD_STEP, PHONE_STEP, temp_store
 from client_manager import active_clients, build_client, dl_locks, _start_time
 from config import API_ID, API_HASH
-from database import is_subscribed, save_user_session
-from keyboards import main_keyboard
+from database import activate_trial, is_subscribed, save_user_session
+from keyboards import main_keyboard, not_subscribed_keyboard
 from user.download import register_download_handler
 from user.copy import register_copy_handler
 from user.story import register_story_handler
@@ -28,7 +28,6 @@ def register_telethon_handlers(client, user_id: int):
 
 
 async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Kirim pesan minta nomor HP. Bisa dipanggil dari /setup maupun callback setup_agree."""
     text = (
         "⚙️ *Setup Session Telegram*\n\n"
         "Proses ini menghubungkan akun Telegram kamu ke bot.\n"
@@ -47,10 +46,40 @@ async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def setup_agree_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Dipanggil saat user klik tombol Saya Setuju pada layar TOS."""
     uid = update.callback_query.from_user.id
     await update.callback_query.answer()
     temp_store.pop(uid, None)
+    if not is_subscribed(uid):
+        await update.callback_query.edit_message_text(
+            "☹️ *Kamu belum berlangganan VIP.*\n"
+            "Hubungi admin untuk berlangganan VIP supaya bisa menggunakan fitur ini.",
+            parse_mode="Markdown",
+            reply_markup=not_subscribed_keyboard(uid),
+        )
+        return ConversationHandler.END
+    return await _ask_phone_number(update, context)
+
+
+async def setup_try_trial_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.callback_query.from_user.id
+    await update.callback_query.answer()
+    success, expired = activate_trial(uid, minutes=30)
+    if not success:
+        await update.callback_query.edit_message_text(
+            "⚠️ *Trial sudah pernah digunakan.*\n\n"
+            "Silakan berlangganan VIP untuk melanjutkan setup.",
+            parse_mode="Markdown",
+            reply_markup=not_subscribed_keyboard(uid),
+        )
+        return ConversationHandler.END
+    exp_str = expired.strftime("%H:%M:%S")
+    await update.callback_query.edit_message_text(
+        f"🎉 *Free Trial aktif!*\n\n"
+        f"⏳ Durasi: *30 menit*\n"
+        f"🕐 Berakhir pukul: *{exp_str}*\n\n"
+        "Sekarang lanjut setup session Telegram kamu.",
+        parse_mode="Markdown",
+    )
     return await _ask_phone_number(update, context)
 
 
