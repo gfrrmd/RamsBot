@@ -53,33 +53,78 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_text("💎 *Beli VIP*\n\nKlik tombol di bawah untuk menghubungi admin dan mendapatkan akses VIP.", parse_mode="Markdown", reply_markup=beli_keyboard()); return
     if data == "fitur_timer":
         await query.edit_message_text(
-            "⏱️ *Download Media Timer & View Once*\n\nSimpan foto/video timer yang hanya bisa dilihat sekali.\n\n"
-            "📲 *Manual:* Balas pesan view once/timer dengan `.dl`\n\n"
-            "🤖 *Auto DL:* Aktifkan tombol ON/OFF di bawah.",
-            reply_markup=timer_keyboard(uid), parse_mode="Markdown",
+            "⏱️ *Download Media Timer & View Once*\n\n"
+            "Simpan foto/video timer yang hanya bisa dilihat sekali \\(view once\\)\\.\n\n"
+            "📲 *Cara pakai \\- Manual:*\n"
+            "Balas pesan view once/timer dengan perintah:\n"
+            "`.dl`\n\n"
+            "🤖 *Cara pakai \\- Auto DL \\(Otomatis\\):*\n"
+            "Aktifkan Auto DL agar bot otomatis menyimpan setiap media view once yang masuk ke chat kamu\\.\n\n"
+            "Gunakan tombol di bawah untuk ON/OFF\\.",
+            reply_markup=timer_keyboard(uid), parse_mode="MarkdownV2",
         ); return
     if data == "vip_toggle_auto_dl":
         current = get_auto_dl_view_once(uid)
         set_auto_dl_view_once(uid, not current)
         await query.edit_message_text(f"⏱️ *Auto DL View Once*\n\nSekarang: {'ON ✅' if not current else 'OFF ❌'}", reply_markup=timer_keyboard(uid), parse_mode="Markdown"); return
     if data == "fitur_copy":
-        await query.edit_message_text("📥 *Download dari Channel/Grup Private*\n\nKetik: `.copy https://t.me/channel/123`", reply_markup=back_to_fitur_keyboard(), parse_mode="Markdown"); return
+        await query.edit_message_text(
+            "📥 *Download dari Channel/Grup Private*\n\n"
+            "Download pesan, foto, atau video dari channel/grup yang dibatasi \\(restricted/tidak bisa di\\-forward\\)\\.\n\n"
+            "📝 *Cara pakai:*\n"
+            "Ketik dimanapun dengan command:\n"
+            "`.copy \\(link postingan\\)`\n\n"
+            "💡 *Contoh:*\n"
+            "`.copy https://t\\.me/koleksijee/456`",
+            reply_markup=back_to_fitur_keyboard(), parse_mode="MarkdownV2",
+        ); return
     if data == "fitur_story":
-        await query.edit_message_text("🎥 *Download Story*\n\nKetik: `.story https://t.me/username/s/7`", reply_markup=back_to_fitur_keyboard(), parse_mode="Markdown"); return
+        await query.edit_message_text(
+            "🎥 *Download Story*\n\n"
+            "Download story Telegram milik orang lain langsung dari link story\\-nya\\.\n\n"
+            "📝 *Cara pakai:*\n"
+            "Kirim link story yang ingin didownload:\n"
+            "`.story \\(link story\\)`\n\n"
+            "💡 *Contoh:*\n"
+            "`.story https://t\\.me/username/s/7`",
+            reply_markup=back_to_fitur_keyboard(), parse_mode="MarkdownV2",
+        ); return
     if data == "fitur_ping":
-        await query.edit_message_text("🏓 *Ping*\n\nBuka Saved Messages lalu kirim `.ping`", reply_markup=back_to_fitur_keyboard(), parse_mode="Markdown"); return
+        await query.edit_message_text(
+            "🏓 *Ping*\n\n"
+            "Cek apakah koneksi session Telethon kamu masih aktif dan berapa lama waktu responnya\\.\n\n"
+            "📝 *Cara pakai:*\n"
+            "Buka Saved Messages di Telegram kamu, lalu kirim:\n"
+            "`.ping`\n\n"
+            "💡 *Contoh hasil:*\n"
+            "🏓 Pong\\! 42ms",
+            reply_markup=back_to_fitur_keyboard(), parse_mode="MarkdownV2",
+        ); return
     if data == "fitur_broadcast":
         await query.edit_message_text(
-            "📢 *Broadcast*\n\nKetik `.bc (pesan kamu)` dari chat manapun.\n\n🚫 Batalkan: `.cancel #task_id`",
-            reply_markup=broadcast_keyboard(), parse_mode="Markdown",
+            "📢 *Broadcast*\n\n"
+            "Kirim pesan yang sama ke semua grup yang kamu join secara otomatis\\.\n\n"
+            "📝 *Cara pakai:*\n"
+            "Ketik command berikut dari chat manapun:\n"
+            "`.bc \\(pesan kamu\\)`\n\n"
+            "💡 *Contoh:*\n"
+            "`.bc Hai, ada yang mau berteman?`\n\n"
+            "🚫 *Batalkan broadcast:*\n"
+            "`.cancel \\#task\\_id`",
+            reply_markup=broadcast_keyboard(), parse_mode="MarkdownV2",
         ); return
     if data == "bc_blacklist_menu":
         rows = bc_blacklist_get(uid)
-        bl_text = "📋 Blacklist kamu kosong.\nSemua grup akan menerima broadcast." if not rows else f"🚫 *{len(rows)} grup diblacklist.*"
+        bl_text = "📋 Blacklist kamu kosong\\.\nSemua grup akan menerima broadcast\\." if not rows else f"🚫 *{len(rows)} grup diblacklist\\.*"
         await query.edit_message_text(
             f"⛔ *Blacklist Broadcast*\n\n{bl_text}\n\n"
-            "Gunakan command:\n`.addbl` / `.addbl <ID Grup>`\n`.delbl` / `.delbl <ID Grup>`\n`.listbl`",
-            reply_markup=bc_blacklist_keyboard(), parse_mode="Markdown",
+            "Untuk mengelola blacklist, gunakan command:\n\n"
+            "`.addbl` :\nTambah ke blacklist\n\n"
+            "`.addbl \\(ID Grup\\)` :\nTambah ke blacklist by ID\n\n"
+            "`.delbl` :\nHapus blacklist\n\n"
+            "`.delbl \\(ID Grup\\)` :\nHapus blacklist by ID\n\n"
+            "`.listbl` :\nLihat list blacklist lengkap",
+            reply_markup=bc_blacklist_keyboard(), parse_mode="MarkdownV2",
         ); return
     if data == "bc_bl_list":
         rows = bc_blacklist_get(uid)
