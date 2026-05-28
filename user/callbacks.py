@@ -34,13 +34,9 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
                 f"⚙️ *Session kamu sudah terpasang*\nStatus: {status}\n\nKirim /setup untuk setup ulang.",
                 parse_mode="Markdown"
             )
-        elif not is_subscribed(uid):
-            await query.edit_message_text(
-                "❌ Kamu belum berlangganan VIP.\nHubungi admin untuk berlangganan.",
-                parse_mode="Markdown",
-                reply_markup=main_keyboard(uid)
-            )
         else:
+            # Semua user (VIP, trial, maupun belum subscribe) langsung tampil ToS dulu
+            # Cek VIP/trial dilakukan SETELAH user klik Saya Setuju (di setup_agree_callback)
             await query.edit_message_text(
                 "📋 *Kebijakan dan Ketentuan Penggunaan*\n\n"
                 "Sebelum melanjutkan, harap baca dan pahami hal berikut:\n\n"
