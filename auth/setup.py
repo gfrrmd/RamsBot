@@ -1,0 +1,145 @@
+import asyncio
+import time
+
+from telegram import Update
+from telegram.ext import ContextTypes, ConversationHandler
+from telethon.errors import PhoneCodeExpiredError, PhoneCodeInvalidError, SessionPasswordNeededError
+
+from auth.states import CODE_STEP, PASSWORD_STEP, PHONE_STEP, temp_store
+from client_manager import active_clients, build_client, dl_locks, _start_time
+from config import API_ID, API_HASH
+from database import is_subscribed, save_user_session
+from keyboards import main_keyboard
+from user.download import register_download_handler
+from user.copy import register_copy_handler
+from user.story import register_story_handler
+from user.auto_dl import register_auto_dl_handler
+from user.ping import register_ping_handler
+from user.broadcast import register_broadcast_handler
+
+
+def register_telethon_handlers(client, user_id: int):
+    register_ping_handler(client, user_id)
+    register_download_handler(client, user_id)
+    register_copy_handler(client, user_id)
+    register_story_handler(client, user_id)
+    register_auto_dl_handler(client, user_id)
+    register_broadcast_handler(client, user_id)
+
+
+async def cmd_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    if not is_subscribed(uid):
+        await update.message.reply_text(
+            "\u274c Kamu belum berlangganan VIP.\nHubungi admin untuk berlangganan.",
+            reply_markup=main_keyboard(uid)
+        )
+        return ConversationHandler.END
+    temp_store.pop(uid, None)
+    await update.message.reply_text(
+        "\U0001f527 *Setup Session Telegram*\n\n"
+        "Proses ini menghubungkan akun Telegram kamu ke bot.\n"
+        "Ketik /cancel kapan saja untuk membatalkan.\n\n"
+        "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
+        "*Langkah 1 dari 3 - Nomor HP*\n\n"
+        "Masukkan nomor HP yang terdaftar di akun Telegram kamu.\n"
+        "Contoh: `+6281234567890`\n\n"
+        "Kirim nomor HP kamu, atau /cancel untuk batal:",
+        parse_mode="Markdown",
+    )
+    return PHONE_STEP
+
+
+async def setup_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    phone = update.message.text.strip()
+    client = build_client(API_ID, API_HASH)
+    try:
+        await client.connect()
+        result = await client.send_code_request(phone)
+        temp_store[uid] = {"phone": phone, "phone_hash": result.phone_code_hash, "client": client}
+        await update.message.reply_text(
+            "\U0001f4e8 Kode OTP berhasil dikirim ke Telegram kamu!\n\n"
+            "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
+            "*Langkah 2 dari 3 - Kode OTP*\n\n"
+            "Ketik kode dengan spasi di antara setiap angka.\nContoh: `1 2 3 4 5`\n\n"
+            "Kirim kode OTP kamu, atau /cancel untuk batal:",
+            parse_mode="Markdown",
+        )
+        return CODE_STEP
+    except Exception as e:
+        await client.disconnect()
+        temp_store.pop(uid, None)
+        await update.message.reply_text(
+            f"\u274c Gagal mengirim OTP: {e}\n\nSilakan /setup ulang dari awal.",
+            reply_markup=main_keyboard(uid)
+        )
+        return ConversationHandler.END
+
+
+async def setup_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    code = update.message.text.strip().replace(" ", "")
+    data = temp_store.get(uid, {})
+    client = data.get("client")
+    try:
+        await client.sign_in(data["phone"], code, phone_code_hash=data["phone_hash"])
+    except SessionPasswordNeededError:
+        await update.message.reply_text(
+            "\U0001f510 *Akun ini mengaktifkan verifikasi 2 langkah (2FA)*\n\n"
+            "\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
+            "*Langkah 3 dari 3 - Password 2FA*\n\n"
+            "Masukkan password 2FA Telegram kamu, atau /cancel untuk batal:",
+            parse_mode="Markdown",
+        )
+        return PASSWORD_STEP
+    except (PhoneCodeInvalidError, PhoneCodeExpiredError):
+        await client.disconnect()
+        temp_store.pop(uid, None)
+        await update.message.reply_text("\u274c Kode OTP salah atau sudah kadaluarsa. Silakan /setup ulang.")
+        return ConversationHandler.END
+    except Exception as e:
+        await client.disconnect()
+        temp_store.pop(uid, None)
+        await update.message.reply_text(f"\u274c Terjadi error: {e}\n\nSilakan /setup ulang.")
+        return ConversationHandler.END
+    return await _finish_setup(update, uid, data, client)
+
+
+async def setup_password(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    data = temp_store.get(uid, {})
+    client = data.get("client")
+    try:
+        await client.sign_in(password=update.message.text.strip())
+    except Exception as e:
+        await client.disconnect()
+        temp_store.pop(uid, None)
+        await update.message.reply_text(f"\u274c Password 2FA salah: {e}\n\nSilakan /setup ulang.")
+        return ConversationHandler.END
+    return await _finish_setup(update, uid, data, client)
+
+
+async def _finish_setup(update, uid, data, client):
+    string_session = client.session.save()
+    save_user_session(uid, API_ID, API_HASH, string_session)
+
+    old = active_clients.get(uid)
+    if old and old.is_connected():
+        await old.disconnect()
+    dl_locks.setdefault(uid, asyncio.Lock())
+    await client.start()
+    _start_time[uid] = time.monotonic()
+    register_telethon_handlers(client, uid)
+    active_clients[uid] = client
+    asyncio.ensure_future(client.run_until_disconnected())
+
+    temp_store.pop(uid, None)
+    await update.message.reply_text(
+        "\u2705 *Setup berhasil! Session kamu sudah aktif.*\n\n"
+        "\u26a0\ufe0f *PENTING: Jangan logout dari sesi ini!*\n\n"
+        "Bot bekerja menggunakan sesi login akun Telegram kamu yang sudah tersimpan.",
+        parse_mode="Markdown",
+        reply_markup=main_keyboard(uid),
+    )
+    return ConversationHandler.END
