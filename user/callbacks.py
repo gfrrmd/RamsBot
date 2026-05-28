@@ -1,0 +1,93 @@
+from telegram import Update
+from telegram.ext import ContextTypes
+
+from client_manager import active_clients
+from database import bc_blacklist_get, get_auto_dl_view_once, get_user_session, is_subscribed, set_auto_dl_view_once
+from keyboards import back_to_fitur_keyboard, bc_blacklist_keyboard, beli_keyboard, broadcast_keyboard, fitur_vip_keyboard, main_keyboard, timer_keyboard
+from user.subscription import build_subscription_text
+
+
+async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    data = query.data
+    uid = query.from_user.id
+    if data == "menu_admin" or data.startswith("admin_") or data.startswith("bl_"):
+        return
+    await query.answer()
+
+    if data == "menu_back":
+        await query.edit_message_text("🏠 *Menu Utama*", reply_markup=main_keyboard(uid), parse_mode="Markdown"); return
+    if data == "menu_setup":
+        has_session = bool(get_user_session(uid))
+        if has_session:
+            client = active_clients.get(uid)
+            status = "🟢 Aktif" if client and client.is_connected() else "🔴 Tidak terhubung"
+            await query.edit_message_text(
+                f"⚙️ *Session kamu sudah terpasang*\nStatus: {status}\n\nKirim /setup untuk setup ulang.",
+                parse_mode="Markdown"
+            )
+        elif not is_subscribed(uid):
+            await query.edit_message_text(
+                "❌ Kamu belum berlangganan VIP.\nHubungi admin untuk berlangganan.",
+                parse_mode="Markdown",
+                reply_markup=main_keyboard(uid)
+            )
+        else:
+            await query.edit_message_text(
+                "⚙️ *Setup Session Telegram*\n\n"
+                "Proses ini menghubungkan akun Telegram kamu ke bot.\n\n"
+                "━━━━━━━━━━━━━━━━━\n"
+                "Ketik /setup untuk memulai.\n\n"
+                "Kamu hanya perlu menyiapkan:\n"
+                "📱 Nomor HP Telegram kamu\n"
+                "🔑 Kode OTP yang akan dikirim ke Telegram\n"
+                "🔐 Password 2FA (jika diaktifkan)",
+                parse_mode="Markdown",
+            )
+        return
+    if data == "menu_subscription":
+        await query.edit_message_text(build_subscription_text(uid), parse_mode="Markdown", reply_markup=main_keyboard(uid)); return
+    if data == "menu_fitur":
+        await query.edit_message_text("✨ *Fitur VIP*\n\nPilih fitur di bawah:", reply_markup=fitur_vip_keyboard(), parse_mode="Markdown"); return
+    if data == "menu_beli":
+        await query.edit_message_text("💎 *Beli VIP*\n\nKlik tombol di bawah untuk menghubungi admin dan mendapatkan akses VIP.", parse_mode="Markdown", reply_markup=beli_keyboard()); return
+    if data == "fitur_timer":
+        await query.edit_message_text(
+            "⏱️ *Download Media Timer & View Once*\n\nSimpan foto/video timer yang hanya bisa dilihat sekali.\n\n"
+            "📲 *Manual:* Balas pesan view once/timer dengan `.dl`\n\n"
+            "🤖 *Auto DL:* Aktifkan tombol ON/OFF di bawah.",
+            reply_markup=timer_keyboard(uid), parse_mode="Markdown",
+        ); return
+    if data == "vip_toggle_auto_dl":
+        current = get_auto_dl_view_once(uid)
+        set_auto_dl_view_once(uid, not current)
+        await query.edit_message_text(f"⏱️ *Auto DL View Once*\n\nSekarang: {'ON ✅' if not current else 'OFF ❌'}", reply_markup=timer_keyboard(uid), parse_mode="Markdown"); return
+    if data == "fitur_copy":
+        await query.edit_message_text("📥 *Download dari Channel/Grup Private*\n\nKetik: `.copy https://t.me/channel/123`", reply_markup=back_to_fitur_keyboard(), parse_mode="Markdown"); return
+    if data == "fitur_story":
+        await query.edit_message_text("🎥 *Download Story*\n\nKetik: `.story https://t.me/username/s/7`", reply_markup=back_to_fitur_keyboard(), parse_mode="Markdown"); return
+    if data == "fitur_ping":
+        await query.edit_message_text("🏓 *Ping*\n\nBuka Saved Messages lalu kirim `.ping`", reply_markup=back_to_fitur_keyboard(), parse_mode="Markdown"); return
+    if data == "fitur_broadcast":
+        await query.edit_message_text(
+            "📢 *Broadcast*\n\nKetik `.bc (pesan kamu)` dari chat manapun.\n\n🚫 Batalkan: `.cancel #task_id`",
+            reply_markup=broadcast_keyboard(), parse_mode="Markdown",
+        ); return
+    if data == "bc_blacklist_menu":
+        rows = bc_blacklist_get(uid)
+        bl_text = "📋 Blacklist kamu kosong.\nSemua grup akan menerima broadcast." if not rows else f"🚫 *{len(rows)} grup diblacklist.*"
+        await query.edit_message_text(
+            f"⛔ *Blacklist Broadcast*\n\n{bl_text}\n\n"
+            "Gunakan command:\n`.addbl` / `.addbl <ID Grup>`\n`.delbl` / `.delbl <ID Grup>`\n`.listbl`",
+            reply_markup=bc_blacklist_keyboard(), parse_mode="Markdown",
+        ); return
+    if data == "bc_bl_list":
+        rows = bc_blacklist_get(uid)
+        if not rows:
+            text = "📝 *Blacklist BC Kosong*\n\nSemua grup akan menerima broadcast kamu."
+        else:
+            lines = [f"🚫 *Blacklist BC* ({len(rows)} grup)\n"]
+            for i, r in enumerate(rows, 1):
+                lines.append(f"{i}. *{r['group_name'] or '—'}*\n   `{r['group_id']}` _({r.get('added_at', '')[:10]})_")
+            text = "\n".join(lines)
+        await query.edit_message_text(text, reply_markup=bc_blacklist_keyboard(), parse_mode="Markdown")
