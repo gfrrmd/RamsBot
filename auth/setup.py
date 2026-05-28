@@ -32,11 +32,9 @@ def register_telethon_handlers(client, user_id: int):
 
 async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
-        "⚙️ *Setup Session Telegram*\n\n"
-        "Proses ini menghubungkan akun Telegram kamu ke bot.\n"
-        "Ketik /cancel kapan saja untuk membatalkan.\n\n"
-        "━━━━━━━━━━━━━━━━━━━\n"
-        "*Langkah 1 dari 3 — Nomor HP*\n\n"
+        "*🤖 Setup Bot Telegram*\n\n"
+        "Proses ini menghubungkan akun Telegram kamu ke bot.\n\n"
+        "*Langkah 1/3 — Nomor HP 📲*\n\n"
         "Masukkan nomor HP yang terdaftar di akun Telegram kamu.\n"
         "Contoh: `+6281234567890`\n\n"
         "Kirim nomor HP kamu, atau /cancel untuk batal:"
@@ -131,9 +129,10 @@ async def setup_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
         temp_store[uid] = {"phone": phone, "phone_hash": result.phone_code_hash, "client": client}
         await update.message.reply_text(
             "📨 Kode OTP berhasil dikirim ke Telegram kamu!\n\n"
-            "━━━━━━━━━━━━━━━━━━━\n"
-            "*Langkah 2 dari 3 — Kode OTP*\n\n"
-            "Ketik kode dengan spasi di antara setiap angka.\nContoh: `1 2 3 4 5`\n\n"
+            "*Langkah 2/3 — Kode OTP 🔢*\n\n"
+            "Ketik kode dengan spasi di antara setiap angka.\n\n"
+            "Contoh Benar: `1 2 3 4 5`\n"
+            "Contoh Salah: `12345`\n\n"
             "Kirim kode OTP kamu, atau /cancel untuk batal:",
             parse_mode="Markdown",
         )
@@ -157,9 +156,8 @@ async def setup_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await client.sign_in(data["phone"], code, phone_code_hash=data["phone_hash"])
     except SessionPasswordNeededError:
         await update.message.reply_text(
-            "🔐 *Akun ini mengaktifkan verifikasi 2 langkah (2FA)*\n\n"
-            "━━━━━━━━━━━━━━━━━━━\n"
-            "*Langkah 3 dari 3 — Password 2FA*\n\n"
+            "🔐 Akun kamu mengaktifkan verifikasi 2 langkah (2FA)\n\n"
+            "*Langkah 3/3 — Password 2FA*\n\n"
             "Masukkan password 2FA Telegram kamu, atau /cancel untuk batal:",
             parse_mode="Markdown",
         )
