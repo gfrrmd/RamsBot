@@ -125,7 +125,7 @@ def activate_subscription(user_id, days=30):
     conn.commit(); conn.close(); return expired
 
 
-def activate_trial(user_id, minutes=30):
+def activate_trial(user_id, minutes=15):
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT trial_used FROM users WHERE user_id=%s", (user_id,))
     row = c.fetchone()
