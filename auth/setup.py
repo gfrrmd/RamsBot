@@ -207,7 +207,8 @@ async def _finish_setup(update, uid, data, client):
     await update.message.reply_text(
         "✅ *Setup berhasil! Session kamu sudah aktif.*\n\n"
         "⚠️ *PENTING: Jangan logout dari sesi ini!*\n\n"
-        "Bot bekerja menggunakan sesi login akun Telegram kamu yang sudah tersimpan.",
+        "Bot bekerja menggunakan sesi login akun Telegram kamu yang sudah tersimpan. Jika kamu logout dari perangkat tempat sesi ini dibuat, maka fitur .dl dan .copy akan berhenti berfungsi dan kamu perlu /setup ulang.\n\n"
+        "💡 Gunakan tombol 🎯 *Fitur VIP* di menu utama untuk panduan lengkap setiap fitur.",
         parse_mode="Markdown",
         reply_markup=main_keyboard(uid),
     )
