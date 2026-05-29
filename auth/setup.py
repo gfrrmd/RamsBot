@@ -17,6 +17,7 @@ from user.story import register_story_handler
 from user.auto_dl import register_auto_dl_handler
 from user.ping import register_ping_handler
 from user.broadcast import register_broadcast_handler
+from user.join_request import register_join_request_handler
 
 WIB = timezone(timedelta(hours=7))
 
@@ -28,6 +29,7 @@ def register_telethon_handlers(client, user_id: int):
     register_story_handler(client, user_id)
     register_auto_dl_handler(client, user_id)
     register_broadcast_handler(client, user_id)
+    register_join_request_handler(client, user_id)
 
 
 async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
