@@ -17,16 +17,13 @@ def register_join_request_handler(client, user_id: int):
         # Resolve channel
         try:
             if channel_input:
-                # Public: pakai @username atau channel_id angka
                 channel = await client.get_entity(channel_input.strip())
             else:
-                # Private: ambil dari chat yang sedang dibuka
                 channel = await event.get_chat()
         except Exception as e:
             await event.reply(f"❌ Gagal resolve channel: `{e}`")
             return
 
-        # Validasi harus berupa Channel
         if not isinstance(channel, Channel):
             await event.reply("❌ Ini bukan channel. Jalankan command di dalam channel.")
             return
@@ -46,9 +43,11 @@ def register_join_request_handler(client, user_id: int):
         approved = 0
         failed = 0
         running_tasks[task_key] = True
-
-        # Semaphore: max 5 approve berjalan bersamaan (~5 menit untuk 3000 requests)
         sem = asyncio.Semaphore(5)
+
+        # Cursor pagination
+        offset_date = 0
+        offset_user = InputPeerEmpty()
 
         async def approve_one(importer):
             nonlocal approved, failed
@@ -61,7 +60,6 @@ def register_join_request_handler(client, user_id: int):
                     approved += 1
                 except FloodWaitError as e:
                     await asyncio.sleep(e.seconds + 2)
-                    # Retry sekali setelah flood wait
                     try:
                         await client(InviteToChannelRequest(
                             channel=channel,
@@ -78,9 +76,9 @@ def register_join_request_handler(client, user_id: int):
                 try:
                     result = await client(GetChatInviteImportersRequest(
                         peer=channel,
-                        requested=True,  # Hanya pending join requests
-                        offset_date=0,
-                        offset_user=InputPeerEmpty(),  # Fix: pakai InputPeerEmpty bukan None
+                        requested=True,
+                        offset_date=offset_date,
+                        offset_user=offset_user,
                         limit=100,
                     ))
                 except ChatAdminRequiredError:
@@ -91,9 +89,14 @@ def register_join_request_handler(client, user_id: int):
                     return
 
                 if not result.importers:
-                    break  # Tidak ada pending request lagi
+                    break  # Semua sudah di-approve
 
-                # Proses batch 100 sekaligus dengan semaphore 5 concurrent
+                # Update cursor ke importer terakhir untuk halaman berikutnya
+                last = result.importers[-1]
+                offset_date = last.date
+                offset_user = await client.get_input_entity(last.user_id)
+
+                # Approve batch ini secara concurrent
                 tasks = [approve_one(imp) for imp in result.importers]
                 await asyncio.gather(*tasks)
 
@@ -102,7 +105,6 @@ def register_join_request_handler(client, user_id: int):
                     f"✅ Approved: **{approved}** | ❌ Gagal: **{failed}**"
                 )
 
-                # Jeda antar-batch
                 await asyncio.sleep(1)
 
         finally:
