@@ -2,7 +2,7 @@ import asyncio
 from telethon import events
 from telethon.tl.functions.messages import GetChatInviteImportersRequest
 from telethon.tl.functions.channels import InviteToChannelRequest
-from telethon.tl.types import Channel
+from telethon.tl.types import Channel, InputPeerEmpty
 from telethon.errors import FloodWaitError, ChatAdminRequiredError
 
 running_tasks = {}
@@ -80,7 +80,7 @@ def register_join_request_handler(client, user_id: int):
                         peer=channel,
                         requested=True,  # Hanya pending join requests
                         offset_date=0,
-                        offset_user=None,
+                        offset_user=InputPeerEmpty(),  # Fix: pakai InputPeerEmpty bukan None
                         limit=100,
                     ))
                 except ChatAdminRequiredError:
