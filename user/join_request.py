@@ -1,13 +1,12 @@
 import asyncio
 from telethon import events
-from telethon.tl.functions.messages import GetChatInviteImportersRequest
-from telethon.tl.functions.channels import InviteToChannelRequest, DeclineChannelJoinRequest
+from telethon.tl.functions.messages import GetChatInviteImportersRequest, HideChatJoinRequest
+from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.tl.types import Channel, InputPeerEmpty
 from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserPrivacyRestrictedError, UserKickedError, UserNotMutualContactError, InputUserDeactivatedError
 
 running_tasks = {}
 
-# Error yang tidak bisa di-approve, harus di-decline/skip
 SKIP_ERRORS = (
     UserPrivacyRestrictedError,
     UserKickedError,
@@ -56,6 +55,17 @@ def register_join_request_handler(client, user_id: int):
         offset_date = 0
         offset_user = InputPeerEmpty()
 
+        async def decline_user(uid):
+            """Tolak request supaya hilang dari pending list."""
+            try:
+                await client(HideChatJoinRequest(
+                    peer=channel,
+                    user_id=uid,
+                    approved=False
+                ))
+            except Exception:
+                pass
+
         async def approve_one(importer):
             nonlocal approved, skipped, failed
             async with sem:
@@ -74,26 +84,13 @@ def register_join_request_handler(client, user_id: int):
                         ))
                         approved += 1
                     except SKIP_ERRORS:
-                        # Decline supaya tidak menghalangi pagination
-                        try:
-                            await client(DeclineChannelJoinRequest(
-                                channel=channel,
-                                user_id=importer.user_id
-                            ))
-                        except Exception:
-                            pass
+                        await decline_user(importer.user_id)
                         skipped += 1
                     except Exception:
                         failed += 1
                 except SKIP_ERRORS:
-                    # Deleted account / privacy / limit — decline dan skip
-                    try:
-                        await client(DeclineChannelJoinRequest(
-                            channel=channel,
-                            user_id=importer.user_id
-                        ))
-                    except Exception:
-                        pass
+                    # Deleted account / privacy / limit — decline agar tidak block pagination
+                    await decline_user(importer.user_id)
                     skipped += 1
                 except Exception:
                     failed += 1
@@ -118,13 +115,12 @@ def register_join_request_handler(client, user_id: int):
                 if not result.importers:
                     break
 
-                # Update cursor sebelum approve — supaya tidak stuck kalau semua gagal
+                # Update cursor sebelum approve supaya tidak stuck
                 last = result.importers[-1]
                 offset_date = last.date
                 try:
                     offset_user = await client.get_input_entity(last.user_id)
                 except Exception:
-                    # Kalau user terakhir deleted, pakai InputPeerEmpty reset ke awal batch baru
                     offset_user = InputPeerEmpty()
 
                 tasks = [approve_one(imp) for imp in result.importers]
