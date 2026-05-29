@@ -1,7 +1,6 @@
 import asyncio
-from telethon import events
+from telethon import events, functions
 from telethon.tl.functions.messages import GetChatInviteImportersRequest
-from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.tl.types import Channel, InputPeerEmpty
 from telethon.errors import (
     FloodWaitError,
@@ -15,12 +14,11 @@ from telethon.errors import (
 
 running_tasks = {}
 
-# Error yang tidak bisa di-approve, langsung skip
 SKIP_ERRORS = (
     UserPrivacyRestrictedError,
     UserKickedError,
     UserNotMutualContactError,
-    InputUserDeactivatedError,  # Deleted account
+    InputUserDeactivatedError,
 )
 
 
@@ -51,7 +49,6 @@ def register_join_request_handler(client, user_id: int):
         msg = await event.reply(
             f"🔄 Memulai approve join requests...\n"
             f"📢 **{channel.title}**\n"
-            f"⚡ Mode: Batch 5 concurrent\n"
             f"⏹ `.stopaccept` untuk batal."
         )
 
@@ -63,23 +60,26 @@ def register_join_request_handler(client, user_id: int):
 
         offset_date = 0
         offset_user = InputPeerEmpty()
-        consecutive_empty = 0  # Guard kalau pagination stuck
+        consecutive_empty = 0
 
         async def approve_one(importer):
             nonlocal approved, skipped, failed
             async with sem:
                 try:
-                    await client(InviteToChannelRequest(
-                        channel=channel,
-                        users=[importer.user_id]
+                    # Cara yang benar: HideChatJoinRequestRequest dengan approved=True
+                    await client(functions.messages.HideChatJoinRequestRequest(
+                        peer=channel,
+                        user_id=importer.user_id,
+                        approved=True
                     ))
                     approved += 1
                 except FloodWaitError as e:
                     await asyncio.sleep(e.seconds + 2)
                     try:
-                        await client(InviteToChannelRequest(
-                            channel=channel,
-                            users=[importer.user_id]
+                        await client(functions.messages.HideChatJoinRequestRequest(
+                            peer=channel,
+                            user_id=importer.user_id,
+                            approved=True
                         ))
                         approved += 1
                     except SKIP_ERRORS:
@@ -87,11 +87,9 @@ def register_join_request_handler(client, user_id: int):
                     except Exception:
                         failed += 1
                 except PeerFloodError:
-                    # Akun kena flood global, tunggu lebih lama
                     await asyncio.sleep(30)
                     failed += 1
                 except SKIP_ERRORS:
-                    # Deleted account / privacy / limit — skip saja
                     skipped += 1
                 except Exception:
                     failed += 1
@@ -116,13 +114,13 @@ def register_join_request_handler(client, user_id: int):
                 if not result.importers:
                     consecutive_empty += 1
                     if consecutive_empty >= 2:
-                        break  # Benar-benar sudah habis
+                        break
                     await asyncio.sleep(2)
                     continue
 
                 consecutive_empty = 0
 
-                # Update cursor SEBELUM approve supaya tidak stuck
+                # Update cursor SEBELUM approve
                 last = result.importers[-1]
                 offset_date = last.date
                 try:
