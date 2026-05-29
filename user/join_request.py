@@ -1,12 +1,21 @@
 import asyncio
 from telethon import events
-from telethon.tl.functions.messages import GetChatInviteImportersRequest, HideChatJoinRequest
+from telethon.tl.functions.messages import GetChatInviteImportersRequest
 from telethon.tl.functions.channels import InviteToChannelRequest
 from telethon.tl.types import Channel, InputPeerEmpty
-from telethon.errors import FloodWaitError, ChatAdminRequiredError, UserPrivacyRestrictedError, UserKickedError, UserNotMutualContactError, InputUserDeactivatedError
+from telethon.errors import (
+    FloodWaitError,
+    ChatAdminRequiredError,
+    UserPrivacyRestrictedError,
+    UserKickedError,
+    UserNotMutualContactError,
+    InputUserDeactivatedError,
+    PeerFloodError,
+)
 
 running_tasks = {}
 
+# Error yang tidak bisa di-approve, langsung skip
 SKIP_ERRORS = (
     UserPrivacyRestrictedError,
     UserKickedError,
@@ -54,17 +63,7 @@ def register_join_request_handler(client, user_id: int):
 
         offset_date = 0
         offset_user = InputPeerEmpty()
-
-        async def decline_user(uid):
-            """Tolak request supaya hilang dari pending list."""
-            try:
-                await client(HideChatJoinRequest(
-                    peer=channel,
-                    user_id=uid,
-                    approved=False
-                ))
-            except Exception:
-                pass
+        consecutive_empty = 0  # Guard kalau pagination stuck
 
         async def approve_one(importer):
             nonlocal approved, skipped, failed
@@ -84,13 +83,15 @@ def register_join_request_handler(client, user_id: int):
                         ))
                         approved += 1
                     except SKIP_ERRORS:
-                        await decline_user(importer.user_id)
                         skipped += 1
                     except Exception:
                         failed += 1
+                except PeerFloodError:
+                    # Akun kena flood global, tunggu lebih lama
+                    await asyncio.sleep(30)
+                    failed += 1
                 except SKIP_ERRORS:
-                    # Deleted account / privacy / limit — decline agar tidak block pagination
-                    await decline_user(importer.user_id)
+                    # Deleted account / privacy / limit — skip saja
                     skipped += 1
                 except Exception:
                     failed += 1
@@ -113,9 +114,15 @@ def register_join_request_handler(client, user_id: int):
                     return
 
                 if not result.importers:
-                    break
+                    consecutive_empty += 1
+                    if consecutive_empty >= 2:
+                        break  # Benar-benar sudah habis
+                    await asyncio.sleep(2)
+                    continue
 
-                # Update cursor sebelum approve supaya tidak stuck
+                consecutive_empty = 0
+
+                # Update cursor SEBELUM approve supaya tidak stuck
                 last = result.importers[-1]
                 offset_date = last.date
                 try:
