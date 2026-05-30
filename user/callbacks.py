@@ -119,6 +119,20 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
             "`.cancel #task_id`",
             reply_markup=broadcast_keyboard(), parse_mode="Markdown",
         ); return
+    if data == "fitur_acceptall":
+        await query.edit_message_text(
+            "✅ *Auto Approve*\n\n"
+            "Approve semua join request di channel/grup kamu secara otomatis.\n\n"
+            "📝 *Cara pakai:*\n"
+            "Jalankan command di dalam channel, atau sertakan username/link:\n"
+            "`.acceptall`\n"
+            "`.acceptall (username/link channel)`\n\n"
+            "💡 *Contoh:*\n"
+            "`.acceptall @namaChannel`\n\n"
+            "⏹ *Untuk stop:*\n"
+            "`.stopaccept`",
+            reply_markup=back_to_fitur_keyboard(), parse_mode="Markdown",
+        ); return
     if data == "bc_blacklist_menu":
         rows = bc_blacklist_get(uid)
         bl_text = "📋 Blacklist kamu kosong.\nSemua grup akan menerima broadcast." if not rows else f"🚫 *{len(rows)} grup diblacklist.*"
