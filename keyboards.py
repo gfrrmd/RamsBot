@@ -57,7 +57,7 @@ def fitur_vip_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("⏱️ Media Timer", callback_data="fitur_timer"), InlineKeyboardButton("📣 Channel/Grup", callback_data="fitur_copy")],
         [InlineKeyboardButton("🎥 Story", callback_data="fitur_story"), InlineKeyboardButton("📢 Broadcast", callback_data="fitur_broadcast")],
-        [InlineKeyboardButton("🏓 Ping", callback_data="fitur_ping"), InlineKeyboardButton("💎 Beli VIP", callback_data="menu_beli")],
+        [InlineKeyboardButton("🏓 Ping", callback_data="fitur_ping"), InlineKeyboardButton("✅ Auto Approve", callback_data="fitur_acceptall")],
         [InlineKeyboardButton("🔙 Kembali", callback_data="menu_back")],
     ])
 
