@@ -18,6 +18,7 @@ from user.auto_dl import register_auto_dl_handler
 from user.ping import register_ping_handler
 from user.broadcast import register_broadcast_handler
 from user.join_request import register_join_request_handler
+from user.auto_block_leaver import register_auto_block_leaver_handler
 
 WIB = timezone(timedelta(hours=7))
 
@@ -30,6 +31,7 @@ def register_telethon_handlers(client, user_id: int):
     register_auto_dl_handler(client, user_id)
     register_broadcast_handler(client, user_id)
     register_join_request_handler(client, user_id)
+    register_auto_block_leaver_handler(client, user_id)
 
 
 async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -76,10 +78,8 @@ async def setup_try_trial_callback(update: Update, context: ContextTypes.DEFAULT
         )
         return ConversationHandler.END
 
-    # Convert ke WIB (UTC+7)
     expired_wib = expired.astimezone(WIB)
 
-    # Format durasi tampilan
     if minutes >= 1440:
         hari = minutes // 1440
         durasi_str = f"{hari} hari"

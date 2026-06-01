@@ -1,10 +1,59 @@
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from client_manager import active_clients
-from database import bc_blacklist_get, get_auto_dl_view_once, get_user_session, is_subscribed, set_auto_dl_view_once
+from database import (
+    bc_blacklist_get,
+    get_auto_dl_view_once,
+    get_user_session,
+    is_subscribed,
+    set_auto_dl_view_once,
+    add_auto_block_channel,
+    remove_auto_block_channel,
+    get_auto_block_channels,
+)
 from keyboards import back_to_fitur_keyboard, bc_blacklist_keyboard, beli_keyboard, broadcast_keyboard, fitur_vip_keyboard, main_keyboard, timer_keyboard, tos_keyboard
 from user.subscription import build_subscription_text
+from utils.channel_scanner import get_admin_channels
+
+
+async def _show_auto_block_menu(query, uid):
+    client = active_clients.get(uid)
+    if not client or not client.is_connected():
+        await query.edit_message_text(
+            "❌ Session belum aktif. Lakukan /setup dulu.",
+            reply_markup=back_to_fitur_keyboard()
+        )
+        return
+
+    channels = await get_admin_channels(client)
+    watched_ids = {ch["channel_id"] for ch in get_auto_block_channels(uid)}
+
+    if not channels:
+        await query.edit_message_text(
+            "😔 *Auto Block Leaver*\n\nKamu tidak ditemukan sebagai admin di channel/grup manapun.",
+            reply_markup=back_to_fitur_keyboard(),
+            parse_mode="Markdown"
+        )
+        return
+
+    buttons = []
+    for ch in channels:
+        status = "✅" if ch["id"] in watched_ids else "☑️"
+        buttons.append([InlineKeyboardButton(
+            f"{status} {ch['name']}",
+            callback_data=f"abl_toggle_{ch['id']}"
+        )])
+    buttons.append([InlineKeyboardButton("🔙 Kembali ke Fitur VIP", callback_data="menu_fitur")])
+
+    await query.edit_message_text(
+        "🔒 *Auto Block Leaver*\n\n"
+        "Pilih channel yang ingin dipantau.\n"
+        "Jika seseorang keluar dari channel yang aktif (✅), akun mereka akan otomatis diblokir dari akun Telegram kamu.\n\n"
+        "✅ = aktif  |  ☑️ = nonaktif",
+        reply_markup=InlineKeyboardMarkup(buttons),
+        parse_mode="Markdown"
+    )
 
 
 async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -133,6 +182,27 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
             "`.stopaccept`",
             reply_markup=back_to_fitur_keyboard(), parse_mode="Markdown",
         ); return
+    if data == "fitur_autoblock":
+        await _show_auto_block_menu(query, uid)
+        return
+    if data.startswith("abl_toggle_"):
+        channel_id = int(data.split("abl_toggle_")[1])
+        watched = {ch["channel_id"] for ch in get_auto_block_channels(uid)}
+        if channel_id in watched:
+            remove_auto_block_channel(uid, channel_id)
+        else:
+            # Ambil nama channel dari scanner untuk disimpan
+            client = active_clients.get(uid)
+            channel_name = ""
+            if client:
+                try:
+                    entity = await client.get_entity(channel_id)
+                    channel_name = getattr(entity, "title", "") or ""
+                except Exception:
+                    pass
+            add_auto_block_channel(uid, channel_id, channel_name)
+        await _show_auto_block_menu(query, uid)
+        return
     if data == "bc_blacklist_menu":
         rows = bc_blacklist_get(uid)
         bl_text = "📋 Blacklist kamu kosong.\nSemua grup akan menerima broadcast." if not rows else f"🚫 *{len(rows)} grup diblacklist.*"

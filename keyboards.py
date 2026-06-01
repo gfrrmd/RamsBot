@@ -58,6 +58,7 @@ def fitur_vip_keyboard():
         [InlineKeyboardButton("⏱️ Media Timer", callback_data="fitur_timer"), InlineKeyboardButton("📣 Channel/Grup", callback_data="fitur_copy")],
         [InlineKeyboardButton("🎥 Story", callback_data="fitur_story"), InlineKeyboardButton("📢 Broadcast", callback_data="fitur_broadcast")],
         [InlineKeyboardButton("🏓 Ping", callback_data="fitur_ping"), InlineKeyboardButton("✅ Auto Approve", callback_data="fitur_acceptall")],
+        [InlineKeyboardButton("🔒 Auto Block Leaver", callback_data="fitur_autoblock")],
         [InlineKeyboardButton("🔙 Kembali", callback_data="menu_back")],
     ])
 

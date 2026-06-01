@@ -63,6 +63,15 @@ def init_db():
             UNIQUE (user_id, group_id)
         )
     """)
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS auto_block_channels (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            channel_id BIGINT NOT NULL,
+            channel_name TEXT,
+            UNIQUE(user_id, channel_id)
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -242,3 +251,30 @@ def bc_blacklist_get(user_id: int) -> list[dict]:
 def bc_blacklist_ids(user_id: int) -> set:
     conn = get_conn(); c = conn.cursor(); c.execute("SELECT group_id FROM bc_group_blacklist WHERE user_id=%s", (user_id,))
     rows = c.fetchall(); conn.close(); return {r[0] for r in rows}
+
+
+# ── Auto Block Leaver ──────────────────────────────────────────────────────────
+
+def add_auto_block_channel(user_id: int, channel_id: int, channel_name: str = "") -> bool:
+    conn = get_conn(); c = conn.cursor()
+    try:
+        c.execute("""
+            INSERT INTO auto_block_channels (user_id, channel_id, channel_name)
+            VALUES (%s, %s, %s) ON CONFLICT(user_id, channel_id) DO NOTHING
+        """, (user_id, channel_id, channel_name or ""))
+        conn.commit(); return c.rowcount > 0
+    finally:
+        conn.close()
+
+
+def remove_auto_block_channel(user_id: int, channel_id: int) -> bool:
+    conn = get_conn(); c = conn.cursor()
+    c.execute("DELETE FROM auto_block_channels WHERE user_id=%s AND channel_id=%s", (user_id, channel_id))
+    deleted = c.rowcount; conn.commit(); conn.close(); return deleted > 0
+
+
+def get_auto_block_channels(user_id: int) -> list[dict]:
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT channel_id, channel_name FROM auto_block_channels WHERE user_id=%s", (user_id,))
+    rows = c.fetchall(); conn.close()
+    return [{"channel_id": r[0], "channel_name": r[1]} for r in rows]
