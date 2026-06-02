@@ -278,3 +278,11 @@ def get_auto_block_channels(user_id: int) -> list[dict]:
     c.execute("SELECT channel_id, channel_name FROM auto_block_channels WHERE user_id=%s", (user_id,))
     rows = c.fetchall(); conn.close()
     return [{"channel_id": r[0], "channel_name": r[1]} for r in rows]
+
+
+def get_all_auto_block_channel_owners(channel_id: int) -> list[int]:
+    """Kembalikan semua user_id yang memantau channel_id ini."""
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT user_id FROM auto_block_channels WHERE channel_id=%s", (channel_id,))
+    rows = c.fetchall(); conn.close()
+    return [r[0] for r in rows]
