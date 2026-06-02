@@ -1,7 +1,7 @@
 import asyncio
 import time
 
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ConversationHandler, MessageHandler, filters
+from telegram.ext import Application, CallbackQueryHandler, ChatMemberHandler, CommandHandler, ConversationHandler, MessageHandler, filters
 
 from admin.callbacks import admin_callback_handler, admin_message_handler
 from admin.gift import cmd_gift
@@ -20,6 +20,7 @@ from auth.states import CODE_STEP, PASSWORD_STEP, PHONE_STEP
 from client_manager import _start_time, active_clients, build_client, dl_locks
 from config import API_ID, API_HASH, BOT_TOKEN
 from database import get_conn, init_db, is_subscribed
+from user.auto_block_leaver import handle_chat_member_left
 from user.callbacks import user_callback_handler
 from user.start import cmd_cancel, cmd_start
 
@@ -27,22 +28,22 @@ from user.start import cmd_cancel, cmd_start
 async def post_init(app):
     try:
         init_db()
-        print("✅ Database siap.")
+        print("\u2705 Database siap.")
     except Exception as e:
-        print(f"❌ Gagal init database: {e}"); return
+        print(f"\u274c Gagal init database: {e}"); return
     try:
         conn = get_conn(); cur = conn.cursor()
         cur.execute("SELECT user_id, string_session FROM sessions")
         rows = cur.fetchall(); conn.close()
     except Exception as e:
-        print(f"❌ Gagal load sessions: {e}"); return
+        print(f"\u274c Gagal load sessions: {e}"); return
     if not rows:
-        print("ℹ️ Tidak ada session tersimpan."); return
-    print(f"🔄 Memuat {len(rows)} session tersimpan...")
+        print("\u2139\ufe0f Tidak ada session tersimpan."); return
+    print(f"\U0001f504 Memuat {len(rows)} session tersimpan...")
     for row in rows:
         user_id, string_session = row[0], row[1]
         if not is_subscribed(user_id):
-            print(f"⏭️ Skip session user {user_id} (VIP tidak aktif)"); continue
+            print(f"\u23ed\ufe0f Skip session user {user_id} (VIP tidak aktif)"); continue
         try:
             client = build_client(API_ID, API_HASH, string_session)
             dl_locks.setdefault(user_id, asyncio.Lock())
@@ -51,10 +52,10 @@ async def post_init(app):
             register_telethon_handlers(client, user_id)
             active_clients[user_id] = client
             asyncio.ensure_future(client.run_until_disconnected())
-            print(f"✅ Session user {user_id} berhasil dimuat.")
+            print(f"\u2705 Session user {user_id} berhasil dimuat.")
         except Exception as e:
-            print(f"⚠️ Gagal load session user {user_id}: {e}")
-    print("✅ Semua session berhasil dimuat!")
+            print(f"\u26a0\ufe0f Gagal load session user {user_id}: {e}")
+    print("\u2705 Semua session berhasil dimuat!")
 
 
 def main():
@@ -82,8 +83,14 @@ def main():
     app.add_handler(CallbackQueryHandler(admin_callback_handler, pattern=r"^(menu_admin|admin_|bl_)"))
     app.add_handler(CallbackQueryHandler(user_callback_handler))
     app.add_handler(MessageHandler(filters.ALL, admin_message_handler), group=2)
-    print("🤖 Bot berjalan...")
-    app.run_polling()
+    # Handler untuk auto block leaver — mendeteksi member yang keluar channel/supergroup
+    app.add_handler(ChatMemberHandler(handle_chat_member_left, ChatMemberHandler.CHAT_MEMBER))
+    print("\U0001f916 Bot berjalan...")
+    app.run_polling(allowed_updates=[
+        "message",
+        "callback_query",
+        "chat_member",
+    ])
 
 
 if __name__ == "__main__":
