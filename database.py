@@ -135,7 +135,7 @@ def activate_subscription(user_id, days=30):
 
 
 # Ubah nilai minutes di sini untuk mengatur durasi trial
-TRIAL_DURATION_MINUTES = 10
+TRIAL_DURATION_MINUTES = 5
 
 
 def activate_trial(user_id):
