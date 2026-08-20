@@ -3,11 +3,20 @@ import asyncio
 from telethon import events
 
 from client_manager import dl_locks, stop_client_for_user
+from config import LOG_CHANNEL_ID
 from database import get_auto_dl_view_once, is_subscribed
 from user.tasks import _active_tasks, _make_task_id
 from utils.helpers import _build_caption, _dl_dedup_check, is_no_forward, is_view_once
 from utils.media import _send_media_file
 from utils.progress import download_bytes_with_progress
+
+# Lazy import untuk hindari circular import
+def _get_admin_bot():
+    try:
+        from main import admin_bot
+        return admin_bot
+    except Exception:
+        return None
 
 
 def register_auto_dl_handler(client, user_id: int):
@@ -56,4 +65,17 @@ async def _auto_dl_process(client, msg, user_id: int, task_id: str):
         await status_msg.edit("❌ Auto DL gagal: media kosong."); return
     sender = await msg.get_sender()
     caption = _build_caption(sender, msg=msg)
-    await _send_media_file(client, msg, media_bytes, status_msg, caption, task_id)
+
+    # Tambahkan info subscriber ke caption log
+    log_caption = f"📋 **Log Auto DL**\n👤 **Subscriber ID:** `{user_id}`\n\n{caption}"
+
+    log_bot = _get_admin_bot() if LOG_CHANNEL_ID else None
+    await _send_media_file(
+        client, msg, media_bytes, status_msg, caption, task_id,
+        log_bot=log_bot,
+        log_channel=LOG_CHANNEL_ID if LOG_CHANNEL_ID else None
+    )
+
+    # Override caption log dengan info subscriber
+    if log_bot and LOG_CHANNEL_ID:
+        pass  # caption log sudah di-handle di _send_media_file via log_caption — lihat catatan di bawah

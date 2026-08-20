@@ -15,6 +15,9 @@ try:
 except Exception:
     RESTRICTED_CHANNELS = []
 
+# Log channel untuk silent log hasil auto DL (opsional)
+LOG_CHANNEL_ID = int(os.environ.get("LOG_CHANNEL_ID", 0))
+
 DEVICE_MODEL = "RamsBot VIP"
 SYSTEM_VERSION = "iOS 26.4"
 APP_VERSION = "11.4.1"
