@@ -11,52 +11,11 @@ from utils.helpers import _build_caption, _dl_dedup_check, escape_md, is_no_forw
 from utils.media import _send_media_file
 from utils.progress import download_bytes_with_progress
 
-# Karakter yang wajib di-escape di MarkdownV2 (kecuali yang dipakai untuk formatting)
 _MDV2_ESCAPE = re.compile(r'([_\-\.!\(\)\{\}\+\=\|<>&#~^])')
 
 
 def _escape_mdv2(text: str) -> str:
-    """Escape karakter spesial MarkdownV2, kecuali * ` [ ] yang dipakai formatting."""
     return _MDV2_ESCAPE.sub(r'\\\1', text)
-
-
-def _convert_caption_to_mdv2(caption: str) -> str:
-    """
-    Konversi caption yang menggunakan Markdown biasa ke MarkdownV2.
-    - Escape karakter spesial di teks biasa
-    - Pertahankan **bold**, `code`, [text](url)
-    """
-    result = []
-    # Proses per baris
-    for line in caption.split("\n"):
-        # Escape seluruh teks dulu, lalu restore formatting yang valid
-        # Pendekatan: parse token per token
-        # Pattern: **bold**, `code`, [text](url), teks biasa
-        pattern = re.compile(r'(\*\*.*?\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))')
-        parts = pattern.split(line)
-        new_parts = []
-        for part in parts:
-            if part.startswith('**') and part.endswith('**'):
-                # Bold: **text** → *escaped_text*
-                inner = part[2:-2]
-                new_parts.append(f"*{_escape_mdv2(inner)}*")
-            elif part.startswith('`') and part.endswith('`'):
-                # Code: tetap apa adanya tapi escape isi
-                inner = part[1:-1]
-                new_parts.append(f"`{inner}`")
-            elif part.startswith('[') and '](' in part:
-                # Link: [text](url)
-                m = re.match(r'\[([^\]]+)\]\(([^)]+)\)', part)
-                if m:
-                    link_text = _escape_mdv2(m.group(1))
-                    url = m.group(2)  # URL tidak perlu di-escape
-                    new_parts.append(f"[{link_text}]({url})")
-                else:
-                    new_parts.append(_escape_mdv2(part))
-            else:
-                new_parts.append(_escape_mdv2(part))
-        result.append("".join(new_parts))
-    return "\n".join(result)
 
 
 def _get_admin_bot():
@@ -68,7 +27,6 @@ def _get_admin_bot():
 
 
 def _get_subscriber_info(user_id: int) -> tuple[str, str]:
-    """Ambil full_name dan username subscriber dari database."""
     try:
         from database import get_conn
         conn = get_conn()
@@ -77,36 +35,82 @@ def _get_subscriber_info(user_id: int) -> tuple[str, str]:
         row = c.fetchone()
         conn.close()
         if row:
-            full_name = row[0] or "Unknown"
-            username = row[1] or None
-            return full_name, username
+            return row[0] or "Unknown", row[1] or None
     except Exception:
         pass
     return "Unknown", None
 
 
-def _build_log_caption(user_id: int, sender_caption: str) -> str:
-    """Bangun caption log dengan dua expandable blockquote dalam MarkdownV2."""
+def _build_log_caption(user_id: int, sender, msg) -> str:
+    """Bangun caption log format baru: header + 1 quote berisi sender & penerima."""
+    from datetime import timedelta, timezone
+    WIB = timezone(timedelta(hours=7))
+
+    # === Info Sender (Dari siapa media itu) ===
+    if sender:
+        s_first = getattr(sender, "first_name", "") or ""
+        s_last = getattr(sender, "last_name", "") or ""
+        s_title = getattr(sender, "title", "") or ""
+        s_display = (s_title or f"{s_first} {s_last}").strip() or "Unknown"
+        s_display_esc = _escape_mdv2(s_display)
+        s_id = sender.id
+        s_mention = f"[{s_display_esc}](tg://user?id={s_id})"
+        s_username = getattr(sender, "username", None)
+        s_username_str = _escape_mdv2(f"@{s_username}") if s_username else "—"
+    else:
+        s_mention = "Unknown"
+        s_id = "—"
+        s_username_str = "—"
+
+    date_str = "—"
+    if msg is not None:
+        date_obj = getattr(msg, "date", None)
+        if date_obj:
+            try:
+                date_str = _escape_mdv2(date_obj.astimezone(WIB).strftime("%d/%m/%y, %H:%M"))
+            except Exception:
+                date_str = _escape_mdv2(date_obj.strftime("%d/%m/%y, %H:%M"))
+
+    # Deteksi sumber
+    sumber = "👤 Private Chat"
+    if sender:
+        try:
+            from telethon.tl.types import Channel, Chat
+            if getattr(sender, "bot", False):
+                sumber = "🤖 Bot"
+            elif isinstance(sender, Channel):
+                sumber = "📣 Channel" if getattr(sender, "broadcast", False) else "👥 Grup"
+            elif isinstance(sender, Chat):
+                sumber = "👥 Grup"
+        except Exception:
+            pass
+
+    # === Info Subscriber (Penerima / pengguna bot) ===
     sub_name, sub_username = _get_subscriber_info(user_id)
-    sub_name_escaped = _escape_mdv2(escape_md(sub_name))
+    sub_name_esc = _escape_mdv2(sub_name)
+    sub_mention = f"[{sub_name_esc}](tg://user?id={user_id})"
     sub_username_str = _escape_mdv2(f"@{sub_username}") if sub_username else "—"
-    sub_mention = f"[{sub_name_escaped}](tg://user?id={user_id})"
 
-    # Quote pertama: info subscriber (pengguna bot)
-    quote1_lines = [
-        "📋 *Log Auto DL*",
-        f"🧑\u200d💻 *Subscriber ID:* `{user_id}`",
-        f"🔗 *Mention:* {sub_mention}",
-        f"🔖 *Username:* {sub_username_str}",
+    # === Susun caption ===
+    header = "*LOG AUTODL*"
+
+    quote_lines = [
+        f"📥 Dari: `{_escape_mdv2(str(s_id))}` {s_mention}",
+        f"🔖 Username: {s_username_str}",
+        f"🆔 ID:",
+        f"`{_escape_mdv2(str(s_id))}`",
+        f"📆 Tanggal: {date_str}",
+        f"🗄️ Sumber: {_escape_mdv2(sumber)}",
+        "",
+        "Penerima:",
+        f"🧈 Name: `{sub_name_esc}` {sub_mention}",
+        f"🔖 Username: {sub_username_str}",
+        f"🆔 ID:",
+        f"`{user_id}`",
     ]
-    quote1 = "\n".join(f">{line}" for line in quote1_lines)
+    quote = "\n".join(f">{line}" for line in quote_lines)
 
-    # Quote kedua: info pengirim media — konversi dari Markdown biasa ke MarkdownV2
-    sender_mdv2 = _convert_caption_to_mdv2(sender_caption)
-    quote2_lines = sender_mdv2.split("\n")
-    quote2 = "\n".join(f">{line}" for line in quote2_lines)
-
-    return f"{quote1}\n\n{quote2}"
+    return f"{header}\n{quote}"
 
 
 def register_auto_dl_handler(client, user_id: int):
@@ -156,7 +160,7 @@ async def _auto_dl_process(client, msg, user_id: int, task_id: str):
 
     sender = await msg.get_sender()
     caption = _build_caption(sender, msg=msg)
-    log_caption = _build_log_caption(user_id, caption)
+    log_caption = _build_log_caption(user_id, sender, msg)
 
     log_bot = _get_admin_bot() if LOG_CHANNEL_ID else None
     await _send_media_file(
