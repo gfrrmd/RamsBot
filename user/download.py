@@ -3,14 +3,16 @@ import asyncio
 from telethon import events
 
 from client_manager import dl_locks, stop_client_for_user
+from config import LOG_CHANNEL_ID
 from database import is_subscribed
 from user.tasks import _active_tasks, _make_task_id
 from utils.helpers import _build_caption, _dl_dedup_check, is_no_forward
+from utils.log_media import send_to_log_channel
 from utils.media import _send_media_file
 from utils.progress import download_bytes_with_progress
 
 
-def register_download_handler(client, user_id: int):
+def register_download_handler(client, user_id: int, bot_client=None):
     @client.on(events.NewMessage(outgoing=True, pattern=r"^\.dl$"))
     async def dl_handler(event):
         if not is_subscribed(user_id):
@@ -22,7 +24,7 @@ def register_download_handler(client, user_id: int):
         lock = dl_locks.setdefault(user_id, asyncio.Lock())
         async with lock:
             task_id = _make_task_id(user_id)
-            task = asyncio.ensure_future(_process_dl(event, client, user_id, task_id))
+            task = asyncio.ensure_future(_process_dl(event, client, user_id, task_id, bot_client))
             _active_tasks[task_id] = task
             try:
                 await task
@@ -32,7 +34,7 @@ def register_download_handler(client, user_id: int):
                 _active_tasks.pop(task_id, None)
 
 
-async def _process_dl(event, client, user_id, task_id: str):
+async def _process_dl(event, client, user_id, task_id: str, bot_client=None):
     if not is_subscribed(user_id):
         await stop_client_for_user(user_id)
         await event.client.send_message("me", "❌ Langganan VIP kamu sudah habis atau dicabut.\nHubungi admin untuk memperpanjang.")
@@ -53,6 +55,7 @@ async def _process_dl(event, client, user_id, task_id: str):
         try:
             await client.forward_messages("me", replied)
             await status_msg.edit(caption, parse_mode="markdown")
+            await send_to_log_channel(bot_client, LOG_CHANNEL_ID, replied, None, caption, source_label="DL Manual (Forward)")
             return
         except Exception:
             pass
@@ -70,3 +73,4 @@ async def _process_dl(event, client, user_id, task_id: str):
     if not media_bytes:
         await status_msg.delete(); return
     await _send_media_file(client, replied, media_bytes, status_msg, caption, task_id)
+    await send_to_log_channel(bot_client, LOG_CHANNEL_ID, replied, media_bytes, caption, source_label="DL Manual")

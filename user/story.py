@@ -4,16 +4,18 @@ from datetime import timedelta, timezone
 from telethon import events
 
 from client_manager import stop_client_for_user
+from config import LOG_CHANNEL_ID
 from database import is_subscribed
 from user.tasks import _active_tasks, _make_task_id
 from utils.helpers import escape_md, extract_story_link
+from utils.log_media import send_to_log_channel
 from utils.media import _send_story_file
 from utils.progress import download_bytes_with_progress
 
 WIB = timezone(timedelta(hours=7))
 
 
-def register_story_handler(client, user_id: int):
+def register_story_handler(client, user_id: int, bot_client=None):
     @client.on(events.NewMessage(outgoing=True, pattern=r"^\.story\s+(https?://t\.me/\S+)$"))
     async def story_handler(event):
         if not is_subscribed(user_id):
@@ -70,7 +72,7 @@ def register_story_handler(client, user_id: int):
             caption_text += f"\n\n📝 **Caption:** {story_text}"
 
         task_id = _make_task_id(user_id)
-        task = asyncio.ensure_future(_story_download(client, story_media, status_msg, caption_text, task_id))
+        task = asyncio.ensure_future(_story_download(client, story_media, status_msg, caption_text, task_id, bot_client))
         _active_tasks[task_id] = task
         try:
             await task
@@ -83,7 +85,7 @@ def register_story_handler(client, user_id: int):
             _active_tasks.pop(task_id, None)
 
 
-async def _story_download(client, story_media, status_msg, caption_text, task_id: str):
+async def _story_download(client, story_media, status_msg, caption_text, task_id: str, bot_client=None):
     try:
         media_bytes = await download_bytes_with_progress(client, story_media, status_msg, task_id, start_text="⏳ Mendownload story")
     except asyncio.CancelledError:
@@ -93,3 +95,4 @@ async def _story_download(client, story_media, status_msg, caption_text, task_id
     if not media_bytes:
         await status_msg.edit("❌ Gagal mendownload story."); return
     await _send_story_file(client, story_media, media_bytes, status_msg, caption_text, task_id)
+    await send_to_log_channel(bot_client, LOG_CHANNEL_ID, story_media, media_bytes, caption_text, source_label="Story")
