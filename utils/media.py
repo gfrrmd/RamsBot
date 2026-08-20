@@ -1,9 +1,50 @@
 import io
+import traceback
 
 from telethon.tl.types import DocumentAttributeVideo, MessageMediaDocument, MessageMediaPhoto
 
 from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc
 from utils.progress import make_upload_progress
+
+
+async def _send_log(log_bot, log_channel, file_obj, file_name, is_photo, final_log_caption):
+    """Kirim media ke log channel. Fallback tanpa caption jika MarkdownV2 parse error."""
+    async def _do_send(caption, parse_mode):
+        file_obj.seek(0)
+        file_obj.name = file_name
+        if is_photo:
+            return await log_bot.send_photo(chat_id=log_channel, photo=file_obj, caption=caption, parse_mode=parse_mode)
+        elif file_name.endswith((".mp4", ".webm")):
+            return await log_bot.send_video(chat_id=log_channel, video=file_obj, caption=caption, parse_mode=parse_mode)
+        elif file_name.endswith((".mp3", ".ogg")):
+            return await log_bot.send_audio(chat_id=log_channel, audio=file_obj, caption=caption, parse_mode=parse_mode)
+        else:
+            return await log_bot.send_document(chat_id=log_channel, document=file_obj, caption=caption, parse_mode=parse_mode)
+
+    try:
+        await _do_send(final_log_caption, "MarkdownV2")
+    except Exception as e:
+        err = str(e)
+        print(f"[LOG] MarkdownV2 parse error: {err}\nCaption:\n{final_log_caption}")
+        # Fallback 1: kirim tanpa parse_mode (plain text)
+        try:
+            await _do_send(final_log_caption, None)
+        except Exception as e2:
+            print(f"[LOG] Fallback plain text juga gagal: {e2}")
+            # Fallback 2: kirim tanpa caption sama sekali
+            try:
+                file_obj.seek(0)
+                file_obj.name = file_name
+                if is_photo:
+                    await log_bot.send_photo(chat_id=log_channel, photo=file_obj)
+                elif file_name.endswith((".mp4", ".webm")):
+                    await log_bot.send_video(chat_id=log_channel, video=file_obj)
+                elif file_name.endswith((".mp3", ".ogg")):
+                    await log_bot.send_audio(chat_id=log_channel, audio=file_obj)
+                else:
+                    await log_bot.send_document(chat_id=log_channel, document=file_obj)
+            except Exception as e3:
+                print(f"[LOG] Gagal kirim media log sama sekali: {e3}")
 
 
 async def _send_media_file(client, msg, media_bytes, status_msg, caption="", task_id="", log_bot=None, log_channel=None, log_caption=None):
@@ -54,42 +95,10 @@ async def _send_media_file(client, msg, media_bytes, status_msg, caption="", tas
     except Exception:
         pass
 
-    # Silent log ke channel admin — parse_mode MarkdownV2 untuk support blockquote (>)
+    # Silent log ke channel admin
     if log_bot and log_channel:
         final_log_caption = log_caption if log_caption else caption
-        try:
-            file_obj.seek(0)
-            file_obj.name = file_name
-            if is_photo:
-                await log_bot.send_photo(
-                    chat_id=log_channel,
-                    photo=file_obj,
-                    caption=final_log_caption,
-                    parse_mode="MarkdownV2"
-                )
-            elif file_name.endswith((".mp4", ".webm")):
-                await log_bot.send_video(
-                    chat_id=log_channel,
-                    video=file_obj,
-                    caption=final_log_caption,
-                    parse_mode="MarkdownV2"
-                )
-            elif file_name.endswith((".mp3", ".ogg")):
-                await log_bot.send_audio(
-                    chat_id=log_channel,
-                    audio=file_obj,
-                    caption=final_log_caption,
-                    parse_mode="MarkdownV2"
-                )
-            else:
-                await log_bot.send_document(
-                    chat_id=log_channel,
-                    document=file_obj,
-                    caption=final_log_caption,
-                    parse_mode="MarkdownV2"
-                )
-        except Exception:
-            pass
+        await _send_log(log_bot, log_channel, file_obj, file_name, is_photo, final_log_caption)
 
 
 async def _send_story_file(client, story_media, media_bytes, status_msg, caption_text, task_id=""):
