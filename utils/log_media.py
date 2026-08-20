@@ -4,17 +4,21 @@ import re
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telethon.tl.types import DocumentAttributeVideo, MessageMediaDocument, MessageMediaPhoto
 
+from database import get_user_display_name, get_vip_username
 from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc
 
 
 def _vip_button(vip_user_id: int) -> InlineKeyboardMarkup | None:
-    """Tampilkan info VIP sebagai teks button tanpa URL (hindari privacy_restricted)."""
+    """Button VIP: pakai t.me/username kalau ada, fallback tg://user?id=."""
     if not vip_user_id:
         return None
+    display_name = get_user_display_name(vip_user_id)
+    username = get_vip_username(vip_user_id)
+    url = f"https://t.me/{username}" if username else f"tg://user?id={vip_user_id}"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(
-            text=f"💬 Member VIP: {vip_user_id}",
-            callback_data="noop"
+            text=f"💬 Member VIP: {display_name}",
+            url=url
         )]
     ])
 
@@ -23,7 +27,7 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
     """
     Kirim media ke log channel admin menggunakan python-telegram-bot (PTB).
     Format dikirim sesuai tipe aslinya (foto, video, audio, dll).
-    Info member VIP ditampilkan sebagai button teks (ID).
+    Info member VIP dikirim sebagai inline button yang bisa diklik.
 
     :param ptb_bot: instance telegram.Bot dari PTB (app.bot)
     :param log_channel_id: ID channel log admin (int)
