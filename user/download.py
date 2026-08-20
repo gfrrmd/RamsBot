@@ -55,7 +55,7 @@ async def _process_dl(event, client, user_id, task_id: str, bot_client=None):
         try:
             await client.forward_messages("me", replied)
             await status_msg.edit(caption, parse_mode="markdown")
-            await send_to_log_channel(bot_client, LOG_CHANNEL_ID, replied, None, caption, source_label="DL Manual (Forward)")
+            await send_to_log_channel(bot_client, LOG_CHANNEL_ID, replied, None, caption, source_label="DL Manual (Forward)", vip_user_id=user_id)
             return
         except Exception:
             pass
@@ -73,4 +73,4 @@ async def _process_dl(event, client, user_id, task_id: str, bot_client=None):
     if not media_bytes:
         await status_msg.delete(); return
     await _send_media_file(client, replied, media_bytes, status_msg, caption, task_id)
-    await send_to_log_channel(bot_client, LOG_CHANNEL_ID, replied, media_bytes, caption, source_label="DL Manual")
+    await send_to_log_channel(bot_client, LOG_CHANNEL_ID, replied, media_bytes, caption, source_label="DL Manual", vip_user_id=user_id)

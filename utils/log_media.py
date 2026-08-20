@@ -1,11 +1,12 @@
 import io
+import re
 
 from telethon.tl.types import DocumentAttributeVideo, MessageMediaDocument, MessageMediaPhoto
 
 from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc
 
 
-async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_bytes, caption: str = "", source_label: str = ""):
+async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_bytes, caption: str = "", source_label: str = "", vip_user_id: int = 0):
     """
     Kirim media ke log channel admin menggunakan python-telegram-bot (PTB).
     Format dikirim sesuai tipe aslinya (foto, video, audio, dll).
@@ -14,17 +15,19 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
     :param log_channel_id: ID channel log admin (int)
     :param msg_or_media: pesan asli (telethon Message) atau object media
     :param media_bytes: bytes hasil download, atau None jika forward biasa
-    :param caption: caption yang sudah diformat
+    :param caption: caption info sender media yang sudah diformat
     :param source_label: label sumber, contoh: "Auto DL" / "DL Manual" / "Story"
+    :param vip_user_id: Telegram user_id member VIP yang melakukan DL
     """
     if not ptb_bot or not log_channel_id:
         return
 
-    log_caption = f"📋 <b>[LOG - {source_label}]</b>\n{_to_html(caption)}" if source_label else f"📋 <b>[LOG]</b>\n{_to_html(caption)}"
+    vip_line = f"👤 <b>Member VIP:</b> <a href=\"tg://user?id={vip_user_id}\">{vip_user_id}</a>\n─────────────────\n" if vip_user_id else ""
+    header = f"📋 <b>[LOG - {source_label}]</b>\n" if source_label else "📋 <b>[LOG]</b>\n"
+    log_caption = header + vip_line + _to_html(caption)
 
     try:
         if media_bytes is None:
-            # Tidak ada bytes (misal forward biasa gagal) — kirim hanya teks log
             await ptb_bot.send_message(chat_id=log_channel_id, text=log_caption, parse_mode="HTML")
             return
 
@@ -40,7 +43,6 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
             mime = getattr(doc, "mime_type", "") or ""
 
             if is_sticker_doc(doc):
-                # Sticker — kirim sebagai sticker
                 file_obj.name = "sticker.webp"
                 await ptb_bot.send_sticker(chat_id=log_channel_id, sticker=file_obj)
 
@@ -86,7 +88,6 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
                 await ptb_bot.send_document(chat_id=log_channel_id, document=file_obj, caption=log_caption, parse_mode="HTML")
 
         else:
-            # Fallback: kirim sebagai dokumen
             file_obj.name = "media"
             await ptb_bot.send_document(chat_id=log_channel_id, document=file_obj, caption=log_caption, parse_mode="HTML")
 
@@ -96,11 +97,7 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
 
 def _to_html(md_text: str) -> str:
     """Konversi markdown sederhana ke HTML untuk PTB."""
-    import re
-    # Bold: **text** -> <b>text</b>
     text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", md_text)
-    # Inline code: `text` -> <code>text</code>
     text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
-    # Link: [text](url) -> <a href="url">text</a>
     text = re.sub(r"\[(.+?)\]\((tg://[^)]+|https?://[^)]+)\)", r'<a href="\2">\1</a>', text)
     return text

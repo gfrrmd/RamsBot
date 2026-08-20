@@ -59,4 +59,4 @@ async def _auto_dl_process(client, msg, user_id: int, task_id: str, bot_client=N
     sender = await msg.get_sender()
     caption = _build_caption(sender, msg=msg)
     await _send_media_file(client, msg, media_bytes, status_msg, caption, task_id)
-    await send_to_log_channel(bot_client, LOG_CHANNEL_ID, msg, media_bytes, caption, source_label="Auto DL")
+    await send_to_log_channel(bot_client, LOG_CHANNEL_ID, msg, media_bytes, caption, source_label="Auto DL", vip_user_id=user_id)

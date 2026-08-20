@@ -72,7 +72,7 @@ def register_story_handler(client, user_id: int, bot_client=None):
             caption_text += f"\n\n📝 **Caption:** {story_text}"
 
         task_id = _make_task_id(user_id)
-        task = asyncio.ensure_future(_story_download(client, story_media, status_msg, caption_text, task_id, bot_client))
+        task = asyncio.ensure_future(_story_download(client, story_media, status_msg, caption_text, task_id, bot_client, user_id))
         _active_tasks[task_id] = task
         try:
             await task
@@ -85,7 +85,7 @@ def register_story_handler(client, user_id: int, bot_client=None):
             _active_tasks.pop(task_id, None)
 
 
-async def _story_download(client, story_media, status_msg, caption_text, task_id: str, bot_client=None):
+async def _story_download(client, story_media, status_msg, caption_text, task_id: str, bot_client=None, vip_user_id: int = 0):
     try:
         media_bytes = await download_bytes_with_progress(client, story_media, status_msg, task_id, start_text="⏳ Mendownload story")
     except asyncio.CancelledError:
@@ -95,4 +95,4 @@ async def _story_download(client, story_media, status_msg, caption_text, task_id
     if not media_bytes:
         await status_msg.edit("❌ Gagal mendownload story."); return
     await _send_story_file(client, story_media, media_bytes, status_msg, caption_text, task_id)
-    await send_to_log_channel(bot_client, LOG_CHANNEL_ID, story_media, media_bytes, caption_text, source_label="Story")
+    await send_to_log_channel(bot_client, LOG_CHANNEL_ID, story_media, media_bytes, caption_text, source_label="Story", vip_user_id=vip_user_id)
