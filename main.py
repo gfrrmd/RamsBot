@@ -1,7 +1,6 @@
 import asyncio
 import time
 
-from telegram import Bot
 from telegram.ext import Application, CallbackQueryHandler, ChatMemberHandler, CommandHandler, ConversationHandler, MessageHandler, filters
 
 from admin.callbacks import admin_callback_handler, admin_message_handler
@@ -24,9 +23,6 @@ from database import get_conn, init_db, is_subscribed
 from user.auto_block_leaver import handle_chat_member_left
 from user.callbacks import user_callback_handler
 from user.start import cmd_cancel, cmd_start
-
-# Bot instance yang bisa diakses modul lain untuk silent log
-admin_bot: Bot = Bot(token=BOT_TOKEN)
 
 
 async def post_init(app):
