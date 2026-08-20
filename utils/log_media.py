@@ -15,7 +15,7 @@ def _vip_button(vip_user_id: int) -> InlineKeyboardMarkup | None:
     display_name = get_user_display_name(vip_user_id)
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(
-            text=f"👤 Member VIP: {display_name}",
+            text=f"💬 Member VIP: {display_name}",
             url=f"tg://user?id={vip_user_id}"
         )]
     ])
