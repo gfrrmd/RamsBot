@@ -79,7 +79,6 @@ def bc_blacklist_keyboard():
 
 def beli_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💬 Hubungi Admin", url=f"tg://user?id={ADMIN_ID}")],
         [InlineKeyboardButton("🔙 Kembali", callback_data="menu_back")],
     ])
 
