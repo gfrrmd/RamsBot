@@ -86,6 +86,17 @@ def upsert_user(user_id, username, full_name):
     conn.commit(); conn.close()
 
 
+def get_user_display_name(user_id: int) -> str:
+    """Ambil nama depan user dari DB. Fallback ke ID jika tidak ada."""
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT full_name FROM users WHERE user_id=%s", (user_id,))
+    row = c.fetchone(); conn.close()
+    if row and row[0]:
+        first_name = row[0].strip().split()[0]
+        return first_name
+    return str(user_id)
+
+
 def save_user_session(user_id, api_id, api_hash, string_session):
     conn = get_conn(); c = conn.cursor()
     c.execute("""
