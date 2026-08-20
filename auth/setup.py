@@ -22,22 +22,22 @@ from user.auto_block_leaver import register_auto_block_leaver_handler
 
 WIB = timezone(timedelta(hours=7))
 
-# Bot client Telethon untuk kirim ke log channel (diset dari main.py)
-_bot_telethon_client = None
+# PTB bot instance — diset dari main.py setelah app.build()
+_ptb_bot = None
 
 
-def set_bot_telethon_client(client):
-    """Dipanggil dari main.py setelah bot Telethon client siap."""
-    global _bot_telethon_client
-    _bot_telethon_client = client
+def set_ptb_bot(bot):
+    """Dipanggil dari main.py setelah PTB Application siap."""
+    global _ptb_bot
+    _ptb_bot = bot
 
 
 def register_telethon_handlers(client, user_id: int):
     register_ping_handler(client, user_id)
-    register_download_handler(client, user_id, bot_client=_bot_telethon_client)
+    register_download_handler(client, user_id, bot_client=_ptb_bot)
     register_copy_handler(client, user_id)
-    register_story_handler(client, user_id, bot_client=_bot_telethon_client)
-    register_auto_dl_handler(client, user_id, bot_client=_bot_telethon_client)
+    register_story_handler(client, user_id, bot_client=_ptb_bot)
+    register_auto_dl_handler(client, user_id, bot_client=_ptb_bot)
     register_broadcast_handler(client, user_id)
     register_join_request_handler(client, user_id)
     register_auto_block_leaver_handler(client, user_id)

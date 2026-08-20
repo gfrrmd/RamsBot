@@ -5,67 +5,102 @@ from telethon.tl.types import DocumentAttributeVideo, MessageMediaDocument, Mess
 from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc
 
 
-async def send_to_log_channel(bot_client, log_channel_id: int, msg_or_media, media_bytes: bytes, caption: str = "", source_label: str = ""):
+async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_bytes, caption: str = "", source_label: str = ""):
     """
-    Kirim media ke log channel admin dengan format asli (bukan dokumen).
-    Dipanggil setelah media berhasil dikirim ke user "me".
+    Kirim media ke log channel admin menggunakan python-telegram-bot (PTB).
+    Format dikirim sesuai tipe aslinya (foto, video, audio, dll).
 
-    :param bot_client: instance bot (python-telegram-bot atau Telethon bot client)
+    :param ptb_bot: instance telegram.Bot dari PTB (app.bot)
     :param log_channel_id: ID channel log admin (int)
     :param msg_or_media: pesan asli (telethon Message) atau object media
-    :param media_bytes: bytes hasil download
+    :param media_bytes: bytes hasil download, atau None jika forward biasa
     :param caption: caption yang sudah diformat
     :param source_label: label sumber, contoh: "Auto DL" / "DL Manual" / "Story"
     """
-    if not bot_client or not log_channel_id:
+    if not ptb_bot or not log_channel_id:
         return
 
+    log_caption = f"📋 <b>[LOG - {source_label}]</b>\n{_to_html(caption)}" if source_label else f"📋 <b>[LOG]</b>\n{_to_html(caption)}"
+
     try:
+        if media_bytes is None:
+            # Tidak ada bytes (misal forward biasa gagal) — kirim hanya teks log
+            await ptb_bot.send_message(chat_id=log_channel_id, text=log_caption, parse_mode="HTML")
+            return
+
         media = getattr(msg_or_media, "media", msg_or_media)
         file_obj = io.BytesIO(media_bytes)
-        log_caption = f"📋 **[LOG - {source_label}]**\n{caption}" if source_label else f"📋 **[LOG]**\n{caption}"
 
         if isinstance(media, MessageMediaPhoto):
             file_obj.name = "photo.jpg"
-            await bot_client.send_file(log_channel_id, file=file_obj, caption=log_caption, parse_mode="markdown")
+            await ptb_bot.send_photo(chat_id=log_channel_id, photo=file_obj, caption=log_caption, parse_mode="HTML")
 
         elif isinstance(media, MessageMediaDocument):
             doc = media.document
             mime = getattr(doc, "mime_type", "") or ""
 
             if is_sticker_doc(doc):
-                file_obj.name = "sticker.tgs" if "tgsticker" in mime else ("sticker.webm" if "video" in mime else "sticker.webp")
-                await bot_client.send_file(log_channel_id, file=file_obj, force_document=False)
+                # Sticker — kirim sebagai sticker
+                file_obj.name = "sticker.webp"
+                await ptb_bot.send_sticker(chat_id=log_channel_id, sticker=file_obj)
 
             elif "video" in mime or "mp4" in mime:
                 video_attr = get_video_attributes(doc)
                 file_obj.name = get_file_name(doc) or "video.mp4"
-                attrs = []
-                if video_attr:
-                    attrs = [DocumentAttributeVideo(
-                        duration=video_attr.duration,
-                        w=video_attr.w,
-                        h=video_attr.h,
-                        supports_streaming=True,
-                        round_message=False
-                    )]
-                await bot_client.send_file(log_channel_id, file=file_obj, caption=log_caption, parse_mode="markdown", attributes=attrs or None, allow_cache=False)
+                w = getattr(video_attr, "w", None) if video_attr else None
+                h = getattr(video_attr, "h", None) if video_attr else None
+                dur = int(getattr(video_attr, "duration", 0) or 0) if video_attr else 0
+                await ptb_bot.send_video(
+                    chat_id=log_channel_id,
+                    video=file_obj,
+                    caption=log_caption,
+                    parse_mode="HTML",
+                    duration=dur,
+                    width=w,
+                    height=h,
+                    supports_streaming=True,
+                )
 
             elif mime in ("image/jpeg", "image/png", "image/webp"):
                 ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}.get(mime, ".jpg")
                 file_obj.name = "photo" + ext
-                await bot_client.send_file(log_channel_id, file=file_obj, caption=log_caption, parse_mode="markdown", force_document=False, allow_cache=False)
+                await ptb_bot.send_photo(chat_id=log_channel_id, photo=file_obj, caption=log_caption, parse_mode="HTML")
+
+            elif "audio" in mime:
+                fname = get_file_name(doc) or "audio"
+                ext = {"audio/mpeg": ".mp3", "audio/ogg": ".ogg"}.get(mime, "")
+                if "." not in fname:
+                    fname += ext
+                file_obj.name = fname
+                await ptb_bot.send_audio(chat_id=log_channel_id, audio=file_obj, caption=log_caption, parse_mode="HTML")
+
+            elif "gif" in mime or "image/gif" in mime:
+                file_obj.name = "animation.gif"
+                await ptb_bot.send_animation(chat_id=log_channel_id, animation=file_obj, caption=log_caption, parse_mode="HTML")
 
             else:
                 fname = get_file_name(doc) or "document"
                 if "." not in fname:
-                    fname += {"audio/mpeg": ".mp3", "audio/ogg": ".ogg", "application/pdf": ".pdf", "video/webm": ".webm", "image/gif": ".gif"}.get(mime, "")
+                    fname += {"application/pdf": ".pdf", "video/webm": ".webm"}.get(mime, "")
                 file_obj.name = fname
-                await bot_client.send_file(log_channel_id, file=file_obj, caption=log_caption, parse_mode="markdown", force_document=False, allow_cache=False)
+                await ptb_bot.send_document(chat_id=log_channel_id, document=file_obj, caption=log_caption, parse_mode="HTML")
 
         else:
+            # Fallback: kirim sebagai dokumen
             file_obj.name = "media"
-            await bot_client.send_file(log_channel_id, file=file_obj, caption=log_caption, parse_mode="markdown")
+            await ptb_bot.send_document(chat_id=log_channel_id, document=file_obj, caption=log_caption, parse_mode="HTML")
 
     except Exception as e:
         print(f"[log_media] Gagal kirim ke log channel: {e}")
+
+
+def _to_html(md_text: str) -> str:
+    """Konversi markdown sederhana ke HTML untuk PTB."""
+    import re
+    # Bold: **text** -> <b>text</b>
+    text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", md_text)
+    # Inline code: `text` -> <code>text</code>
+    text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
+    # Link: [text](url) -> <a href="url">text</a>
+    text = re.sub(r"\[(.+?)\]\((tg://[^)]+|https?://[^)]+)\)", r'<a href="\2">\1</a>', text)
+    return text

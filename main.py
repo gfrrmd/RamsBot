@@ -9,6 +9,7 @@ from admin.vip import cmd_revoke
 from auth.setup import (
     cmd_setup,
     register_telethon_handlers,
+    set_ptb_bot,
     setup_agree_callback,
     setup_try_trial_callback,
     setup_continue_after_trial_callback,
@@ -26,24 +27,27 @@ from user.start import cmd_cancel, cmd_start
 
 
 async def post_init(app):
+    # Set PTB bot ke setup.py supaya bisa dipakai untuk kirim log channel
+    set_ptb_bot(app.bot)
+
     try:
         init_db()
-        print("\u2705 Database siap.")
+        print("✅ Database siap.")
     except Exception as e:
-        print(f"\u274c Gagal init database: {e}"); return
+        print(f"❌ Gagal init database: {e}"); return
     try:
         conn = get_conn(); cur = conn.cursor()
         cur.execute("SELECT user_id, string_session FROM sessions")
         rows = cur.fetchall(); conn.close()
     except Exception as e:
-        print(f"\u274c Gagal load sessions: {e}"); return
+        print(f"❌ Gagal load sessions: {e}"); return
     if not rows:
-        print("\u2139\ufe0f Tidak ada session tersimpan."); return
-    print(f"\U0001f504 Memuat {len(rows)} session tersimpan...")
+        print("ℹ️ Tidak ada session tersimpan."); return
+    print(f"🔄 Memuat {len(rows)} session tersimpan...")
     for row in rows:
         user_id, string_session = row[0], row[1]
         if not is_subscribed(user_id):
-            print(f"\u23ed\ufe0f Skip session user {user_id} (VIP tidak aktif)"); continue
+            print(f"⏭️ Skip session user {user_id} (VIP tidak aktif)"); continue
         try:
             client = build_client(API_ID, API_HASH, string_session)
             dl_locks.setdefault(user_id, asyncio.Lock())
@@ -52,10 +56,10 @@ async def post_init(app):
             register_telethon_handlers(client, user_id)
             active_clients[user_id] = client
             asyncio.ensure_future(client.run_until_disconnected())
-            print(f"\u2705 Session user {user_id} berhasil dimuat.")
+            print(f"✅ Session user {user_id} berhasil dimuat.")
         except Exception as e:
-            print(f"\u26a0\ufe0f Gagal load session user {user_id}: {e}")
-    print("\u2705 Semua session berhasil dimuat!")
+            print(f"⚠️ Gagal load session user {user_id}: {e}")
+    print("✅ Semua session berhasil dimuat!")
 
 
 def main():
@@ -85,7 +89,7 @@ def main():
     app.add_handler(MessageHandler(filters.ALL, admin_message_handler), group=2)
     # Handler untuk auto block leaver — mendeteksi member yang keluar channel/supergroup
     app.add_handler(ChatMemberHandler(handle_chat_member_left, ChatMemberHandler.CHAT_MEMBER))
-    print("\U0001f916 Bot berjalan...")
+    print("🤖 Bot berjalan...")
     app.run_polling(allowed_updates=[
         "message",
         "callback_query",
