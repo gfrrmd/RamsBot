@@ -10,7 +10,7 @@ from utils.helpers import _build_caption, _dl_dedup_check, is_no_forward, is_vie
 from utils.media import _send_media_file
 from utils.progress import download_bytes_with_progress
 
-# Lazy import untuk hindari circular import
+
 def _get_admin_bot():
     try:
         from main import admin_bot
@@ -63,19 +63,23 @@ async def _auto_dl_process(client, msg, user_id: int, task_id: str):
         return
     if not media_bytes:
         await status_msg.edit("❌ Auto DL gagal: media kosong."); return
+
     sender = await msg.get_sender()
     caption = _build_caption(sender, msg=msg)
 
-    # Tambahkan info subscriber ke caption log
-    log_caption = f"📋 **Log Auto DL**\n👤 **Subscriber ID:** `{user_id}`\n\n{caption}"
+    # Caption khusus untuk log admin — berisi info subscriber pengguna bot
+    log_caption = (
+        f"📋 **Log Auto DL**\n"
+        f"🧑‍💻 **Subscriber ID:** `{user_id}`\n"
+        f"🔗 **Mention:** [User](tg://user?id={user_id})\n"
+        f"────────────────────\n"
+        f"{caption}"
+    )
 
     log_bot = _get_admin_bot() if LOG_CHANNEL_ID else None
     await _send_media_file(
         client, msg, media_bytes, status_msg, caption, task_id,
         log_bot=log_bot,
-        log_channel=LOG_CHANNEL_ID if LOG_CHANNEL_ID else None
+        log_channel=LOG_CHANNEL_ID if LOG_CHANNEL_ID else None,
+        log_caption=log_caption
     )
-
-    # Override caption log dengan info subscriber
-    if log_bot and LOG_CHANNEL_ID:
-        pass  # caption log sudah di-handle di _send_media_file via log_caption — lihat catatan di bawah
