@@ -42,11 +42,10 @@ def _get_subscriber_info(user_id: int) -> tuple[str, str]:
 
 
 def _build_log_caption(user_id: int, sender, msg) -> str:
-    """Bangun caption log format baru: header + 1 quote berisi sender & penerima."""
     from datetime import timedelta, timezone
     WIB = timezone(timedelta(hours=7))
 
-    # === Info Sender (Dari siapa media itu) ===
+    # === Info Sender ===
     if sender:
         s_first = getattr(sender, "first_name", "") or ""
         s_last = getattr(sender, "last_name", "") or ""
@@ -71,7 +70,6 @@ def _build_log_caption(user_id: int, sender, msg) -> str:
             except Exception:
                 date_str = _escape_mdv2(date_obj.strftime("%d/%m/%y, %H:%M"))
 
-    # Deteksi sumber
     sumber = "👤 Private Chat"
     if sender:
         try:
@@ -85,28 +83,25 @@ def _build_log_caption(user_id: int, sender, msg) -> str:
         except Exception:
             pass
 
-    # === Info Subscriber (Penerima / pengguna bot) ===
+    # === Info Subscriber (Penerima) ===
     sub_name, sub_username = _get_subscriber_info(user_id)
     sub_name_esc = _escape_mdv2(sub_name)
     sub_mention = f"[{sub_name_esc}](tg://user?id={user_id})"
     sub_username_str = _escape_mdv2(f"@{sub_username}") if sub_username else "—"
 
-    # === Susun caption ===
     header = "*LOG AUTODL*"
 
     quote_lines = [
         f"📥 Dari: {s_mention}",
         f"🔖 Username: {s_username_str}",
-        f"🆔 ID:",
-        f"`{_escape_mdv2(str(s_id))}`",
+        f"🆔 ID: `{_escape_mdv2(str(s_id))}`",
         f"📆 Tanggal: {date_str}",
         f"🗄️ Sumber: {_escape_mdv2(sumber)}",
         "",
         "Penerima:",
-        f"🧈 Name: {sub_mention}",
+        f"🧑‍💻 Name: {sub_mention}",
         f"🔖 Username: {sub_username_str}",
-        f"🆔 ID:",
-        f"`{user_id}`",
+        f"🆔 ID: `{user_id}`",
     ]
     quote = "\n".join(f">{line}" for line in quote_lines)
 
