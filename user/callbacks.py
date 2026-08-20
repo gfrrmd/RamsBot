@@ -26,7 +26,8 @@ async def _show_auto_block_menu(query, uid):
         )
         return
 
-    channels = await get_admin_channels(client)
+    # Kirim uid sebagai expected_user_id agar tidak bocor ke akun lain
+    channels = await get_admin_channels(client, expected_user_id=uid)
     watched_ids = {ch["channel_id"] for ch in get_auto_block_channels(uid)}
 
     if not channels:
@@ -191,7 +192,6 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
         if channel_id in watched:
             remove_auto_block_channel(uid, channel_id)
         else:
-            # Ambil nama channel dari scanner untuk disimpan
             client = active_clients.get(uid)
             channel_name = ""
             if client:
