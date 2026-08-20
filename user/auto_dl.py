@@ -6,7 +6,7 @@ from client_manager import dl_locks, stop_client_for_user
 from config import LOG_CHANNEL_ID
 from database import get_auto_dl_view_once, is_subscribed
 from user.tasks import _active_tasks, _make_task_id
-from utils.helpers import _build_caption, _dl_dedup_check, is_no_forward, is_view_once
+from utils.helpers import _build_caption, _dl_dedup_check, escape_md, is_no_forward, is_view_once
 from utils.media import _send_media_file
 from utils.progress import download_bytes_with_progress
 
@@ -17,6 +17,24 @@ def _get_admin_bot():
         return admin_bot
     except Exception:
         return None
+
+
+def _get_subscriber_info(user_id: int) -> tuple[str, str]:
+    """Ambil full_name dan username subscriber dari database."""
+    try:
+        from database import get_conn
+        conn = get_conn()
+        c = conn.cursor()
+        c.execute("SELECT full_name, username FROM users WHERE user_id=%s", (user_id,))
+        row = c.fetchone()
+        conn.close()
+        if row:
+            full_name = row[0] or "Unknown"
+            username = row[1] or None
+            return full_name, username
+    except Exception:
+        pass
+    return "Unknown", None
 
 
 def register_auto_dl_handler(client, user_id: int):
@@ -67,11 +85,18 @@ async def _auto_dl_process(client, msg, user_id: int, task_id: str):
     sender = await msg.get_sender()
     caption = _build_caption(sender, msg=msg)
 
-    # Caption khusus untuk log admin — berisi info subscriber pengguna bot
+    # Ambil info subscriber dari database untuk caption log
+    sub_name, sub_username = _get_subscriber_info(user_id)
+    sub_name_escaped = escape_md(sub_name)
+    sub_username_str = f"@{sub_username}" if sub_username else "—"
+    sub_mention = f"[{sub_name_escaped}](tg://user?id={user_id})"
+
+    # Caption log admin sesuai format yang diminta
     log_caption = (
         f"📋 **Log Auto DL**\n"
         f"🧑‍💻 **Subscriber ID:** `{user_id}`\n"
-        f"🔗 **Mention:** [User](tg://user?id={user_id})\n"
+        f"🔗 **Mention:** {sub_mention}\n"
+        f"🔖 **Username:** {sub_username_str}\n"
         f"────────────────────\n"
         f"{caption}"
     )
