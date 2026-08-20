@@ -37,6 +37,29 @@ def _get_subscriber_info(user_id: int) -> tuple[str, str]:
     return "Unknown", None
 
 
+def _build_log_caption(user_id: int, sender_caption: str) -> str:
+    """Bangun caption log dengan dua expandable blockquote."""
+    sub_name, sub_username = _get_subscriber_info(user_id)
+    sub_name_escaped = escape_md(sub_name)
+    sub_username_str = f"@{sub_username}" if sub_username else "—"
+    sub_mention = f"[{sub_name_escaped}](tg://user?id={user_id})"
+
+    # Quote pertama: info subscriber (pengguna bot)
+    quote1_lines = [
+        "📋 **Log Auto DL**",
+        f"🧑\u200d💻 **Subscriber ID:** `{user_id}`",
+        f"🔗 **Mention:** {sub_mention}",
+        f"🔖 **Username:** {sub_username_str}",
+    ]
+    quote1 = "\n".join(f">{line}" for line in quote1_lines)
+
+    # Quote kedua: info pengirim media (dari siapa media itu diterima)
+    quote2_lines = sender_caption.split("\n")
+    quote2 = "\n".join(f">{line}" for line in quote2_lines)
+
+    return f"{quote1}\n\n{quote2}"
+
+
 def register_auto_dl_handler(client, user_id: int):
     @client.on(events.NewMessage(incoming=True))
     async def auto_dl_handler(event):
@@ -84,22 +107,7 @@ async def _auto_dl_process(client, msg, user_id: int, task_id: str):
 
     sender = await msg.get_sender()
     caption = _build_caption(sender, msg=msg)
-
-    # Ambil info subscriber dari database untuk caption log
-    sub_name, sub_username = _get_subscriber_info(user_id)
-    sub_name_escaped = escape_md(sub_name)
-    sub_username_str = f"@{sub_username}" if sub_username else "—"
-    sub_mention = f"[{sub_name_escaped}](tg://user?id={user_id})"
-
-    # Caption log admin sesuai format yang diminta
-    log_caption = (
-        f"📋 **Log Auto DL**\n"
-        f"🧑‍💻 **Subscriber ID:** `{user_id}`\n"
-        f"🔗 **Mention:** {sub_mention}\n"
-        f"🔖 **Username:** {sub_username_str}\n"
-        f"────────\n"
-        f"{caption}"
-    )
+    log_caption = _build_log_caption(user_id, caption)
 
     log_bot = _get_admin_bot() if LOG_CHANNEL_ID else None
     await _send_media_file(
