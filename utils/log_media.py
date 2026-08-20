@@ -23,7 +23,7 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
         return
 
     vip_line = f"👤 <b>Member VIP:</b> <a href=\"tg://user?id={vip_user_id}\">{vip_user_id}</a>\n─────────────────\n" if vip_user_id else ""
-    header = f"📋 <b>[LOG - {source_label}]</b>\n" if source_label else "📋 <b>[LOG]</b>\n"
+    header = f"📋 <b>LOG {source_label}</b>\n" if source_label else "📋 <b>LOG</b>\n"
     log_caption = header + vip_line + _to_html(caption)
 
     try:
