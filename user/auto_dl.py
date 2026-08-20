@@ -97,7 +97,7 @@ async def _auto_dl_process(client, msg, user_id: int, task_id: str):
         f"🧑‍💻 **Subscriber ID:** `{user_id}`\n"
         f"🔗 **Mention:** {sub_mention}\n"
         f"🔖 **Username:** {sub_username_str}\n"
-        f"────────────────────\n"
+        f"────────\n"
         f"{caption}"
     )
 
