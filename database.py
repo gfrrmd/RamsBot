@@ -97,6 +97,16 @@ def get_user_display_name(user_id: int) -> str:
     return str(user_id)
 
 
+def get_vip_username(user_id: int) -> str | None:
+    """Ambil username user VIP dari DB. Return None jika tidak ada."""
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT username FROM users WHERE user_id=%s", (user_id,))
+    row = c.fetchone(); conn.close()
+    if row and row[0]:
+        return row[0].lstrip("@")
+    return None
+
+
 def save_user_session(user_id, api_id, api_hash, string_session):
     conn = get_conn(); c = conn.cursor()
     c.execute("""
