@@ -1,57 +1,26 @@
 import io
 import re
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telethon.tl.types import DocumentAttributeVideo, MessageMediaDocument, MessageMediaPhoto
+from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 
-from database import get_user_display_name, get_vip_username
 from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc
-
-
-def _vip_button(vip_user_id: int) -> InlineKeyboardMarkup | None:
-    """Button VIP: pakai t.me/username kalau ada, fallback tg://user?id=."""
-    if not vip_user_id:
-        return None
-    display_name = get_user_display_name(vip_user_id)
-    username = get_vip_username(vip_user_id)
-    url = f"https://t.me/{username}" if username else f"tg://user?id={vip_user_id}"
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(
-            text=f"💬 Member VIP: {display_name}",
-            url=url
-        )]
-    ])
 
 
 async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_bytes, caption: str = "", source_label: str = "", vip_user_id: int = 0):
     """
     Kirim media ke log channel admin menggunakan python-telegram-bot (PTB).
-    Format dikirim sesuai tipe aslinya (foto, video, audio, dll).
-    Info member VIP dikirim sebagai inline button yang bisa diklik.
-
-    :param ptb_bot: instance telegram.Bot dari PTB (app.bot)
-    :param log_channel_id: ID channel log admin (int)
-    :param msg_or_media: pesan asli (telethon Message) atau object media
-    :param media_bytes: bytes hasil download, atau None jika forward biasa
-    :param caption: caption info sender media yang sudah diformat
-    :param source_label: label sumber, contoh: "Auto DL" / "DL Manual" / "Story"
-    :param vip_user_id: Telegram user_id member VIP yang melakukan DL
+    Info member VIP ditampilkan di bawah caption sebagai teks biasa.
     """
     if not ptb_bot or not log_channel_id:
         return
 
     header = f"📋 <b>LOG {source_label}</b>\n" if source_label else "📋 <b>LOG</b>\n"
-    log_caption = header + _to_html(caption)
-    reply_markup = _vip_button(vip_user_id)
+    vip_line = f"\n👤 <b>Member VIP:</b> <code>{vip_user_id}</code>" if vip_user_id else ""
+    log_caption = header + _to_html(caption) + vip_line
 
     try:
         if media_bytes is None:
-            await ptb_bot.send_message(
-                chat_id=log_channel_id,
-                text=log_caption,
-                parse_mode="HTML",
-                reply_markup=reply_markup
-            )
+            await ptb_bot.send_message(chat_id=log_channel_id, text=log_caption, parse_mode="HTML")
             return
 
         media = getattr(msg_or_media, "media", msg_or_media)
@@ -59,11 +28,7 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
 
         if isinstance(media, MessageMediaPhoto):
             file_obj.name = "photo.jpg"
-            await ptb_bot.send_photo(
-                chat_id=log_channel_id, photo=file_obj,
-                caption=log_caption, parse_mode="HTML",
-                reply_markup=reply_markup
-            )
+            await ptb_bot.send_photo(chat_id=log_channel_id, photo=file_obj, caption=log_caption, parse_mode="HTML")
 
         elif isinstance(media, MessageMediaDocument):
             doc = media.document
@@ -72,12 +37,7 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
             if is_sticker_doc(doc):
                 file_obj.name = "sticker.webp"
                 await ptb_bot.send_sticker(chat_id=log_channel_id, sticker=file_obj)
-                await ptb_bot.send_message(
-                    chat_id=log_channel_id,
-                    text=log_caption,
-                    parse_mode="HTML",
-                    reply_markup=reply_markup
-                )
+                await ptb_bot.send_message(chat_id=log_channel_id, text=log_caption, parse_mode="HTML")
 
             elif "video" in mime or "mp4" in mime:
                 video_attr = get_video_attributes(doc)
@@ -88,19 +48,13 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
                 await ptb_bot.send_video(
                     chat_id=log_channel_id, video=file_obj,
                     caption=log_caption, parse_mode="HTML",
-                    duration=dur, width=w, height=h,
-                    supports_streaming=True,
-                    reply_markup=reply_markup
+                    duration=dur, width=w, height=h, supports_streaming=True,
                 )
 
             elif mime in ("image/jpeg", "image/png", "image/webp"):
                 ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}.get(mime, ".jpg")
                 file_obj.name = "photo" + ext
-                await ptb_bot.send_photo(
-                    chat_id=log_channel_id, photo=file_obj,
-                    caption=log_caption, parse_mode="HTML",
-                    reply_markup=reply_markup
-                )
+                await ptb_bot.send_photo(chat_id=log_channel_id, photo=file_obj, caption=log_caption, parse_mode="HTML")
 
             elif "audio" in mime:
                 fname = get_file_name(doc) or "audio"
@@ -108,38 +62,22 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
                 if "." not in fname:
                     fname += ext
                 file_obj.name = fname
-                await ptb_bot.send_audio(
-                    chat_id=log_channel_id, audio=file_obj,
-                    caption=log_caption, parse_mode="HTML",
-                    reply_markup=reply_markup
-                )
+                await ptb_bot.send_audio(chat_id=log_channel_id, audio=file_obj, caption=log_caption, parse_mode="HTML")
 
             elif "gif" in mime or "image/gif" in mime:
                 file_obj.name = "animation.gif"
-                await ptb_bot.send_animation(
-                    chat_id=log_channel_id, animation=file_obj,
-                    caption=log_caption, parse_mode="HTML",
-                    reply_markup=reply_markup
-                )
+                await ptb_bot.send_animation(chat_id=log_channel_id, animation=file_obj, caption=log_caption, parse_mode="HTML")
 
             else:
                 fname = get_file_name(doc) or "document"
                 if "." not in fname:
                     fname += {"application/pdf": ".pdf", "video/webm": ".webm"}.get(mime, "")
                 file_obj.name = fname
-                await ptb_bot.send_document(
-                    chat_id=log_channel_id, document=file_obj,
-                    caption=log_caption, parse_mode="HTML",
-                    reply_markup=reply_markup
-                )
+                await ptb_bot.send_document(chat_id=log_channel_id, document=file_obj, caption=log_caption, parse_mode="HTML")
 
         else:
             file_obj.name = "media"
-            await ptb_bot.send_document(
-                chat_id=log_channel_id, document=file_obj,
-                caption=log_caption, parse_mode="HTML",
-                reply_markup=reply_markup
-            )
+            await ptb_bot.send_document(chat_id=log_channel_id, document=file_obj, caption=log_caption, parse_mode="HTML")
 
     except Exception as e:
         print(f"[log_media] Gagal kirim ke log channel: {e}")
