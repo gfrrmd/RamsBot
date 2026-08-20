@@ -18,14 +18,6 @@ def _escape_mdv2(text: str) -> str:
     return _MDV2_ESCAPE.sub(r'\\\1', text)
 
 
-def _get_admin_bot():
-    try:
-        from main import admin_bot
-        return admin_bot
-    except Exception:
-        return None
-
-
 def _get_subscriber_info(user_id: int) -> tuple[str, str]:
     try:
         from database import get_conn
@@ -99,7 +91,7 @@ def _build_log_caption(user_id: int, sender, msg) -> str:
         f"🗄️ Sumber: {_escape_mdv2(sumber)}",
         "",
         "Penerima:",
-        f"🧑‍💻 Name: {sub_mention}",
+        f"🧑\u200d💻 Name: {sub_mention}",
         f"🔖 Username: {sub_username_str}",
         f"🆔 ID: `{user_id}`",
     ]
@@ -108,7 +100,7 @@ def _build_log_caption(user_id: int, sender, msg) -> str:
     return f"{header}\n{quote}"
 
 
-def register_auto_dl_handler(client, user_id: int):
+def register_auto_dl_handler(client, user_id: int, log_bot=None):
     @client.on(events.NewMessage(incoming=True))
     async def auto_dl_handler(event):
         if not is_subscribed(user_id):
@@ -127,7 +119,7 @@ def register_auto_dl_handler(client, user_id: int):
         lock = dl_locks.setdefault(user_id, asyncio.Lock())
         async with lock:
             task_id = _make_task_id(user_id)
-            task = asyncio.ensure_future(_auto_dl_process(client, msg, user_id, task_id))
+            task = asyncio.ensure_future(_auto_dl_process(client, msg, user_id, task_id, log_bot=log_bot))
             _active_tasks[task_id] = task
             try:
                 await task
@@ -137,7 +129,7 @@ def register_auto_dl_handler(client, user_id: int):
                 _active_tasks.pop(task_id, None)
 
 
-async def _auto_dl_process(client, msg, user_id: int, task_id: str):
+async def _auto_dl_process(client, msg, user_id: int, task_id: str, log_bot=None):
     try:
         status_msg = await client.send_message("me", f"⏱️ Auto DL terdeteksi... 0.00%\n\n⛔ Ketik `.cancel #{task_id}` untuk membatalkan")
         media_bytes = await download_bytes_with_progress(client, msg.media, status_msg, task_id, start_text="⏱️ Auto DL terdeteksi")
@@ -157,10 +149,9 @@ async def _auto_dl_process(client, msg, user_id: int, task_id: str):
     caption = _build_caption(sender, msg=msg)
     log_caption = _build_log_caption(user_id, sender, msg)
 
-    log_bot = _get_admin_bot() if LOG_CHANNEL_ID else None
     await _send_media_file(
         client, msg, media_bytes, status_msg, caption, task_id,
         log_bot=log_bot,
-        log_channel=LOG_CHANNEL_ID if LOG_CHANNEL_ID else None,
+        log_channel=LOG_CHANNEL_ID,
         log_caption=log_caption
     )

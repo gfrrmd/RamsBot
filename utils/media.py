@@ -1,5 +1,4 @@
 import io
-import traceback
 
 from telethon.tl.types import DocumentAttributeVideo, MessageMediaDocument, MessageMediaPhoto
 
@@ -24,14 +23,11 @@ async def _send_log(log_bot, log_channel, file_obj, file_name, is_photo, final_l
     try:
         await _do_send(final_log_caption, "MarkdownV2")
     except Exception as e:
-        err = str(e)
-        print(f"[LOG] MarkdownV2 parse error: {err}\nCaption:\n{final_log_caption}")
-        # Fallback 1: kirim tanpa parse_mode (plain text)
+        print(f"[LOG] MarkdownV2 parse error: {e}\nCaption:\n{final_log_caption}")
         try:
             await _do_send(final_log_caption, None)
         except Exception as e2:
-            print(f"[LOG] Fallback plain text juga gagal: {e2}")
-            # Fallback 2: kirim tanpa caption sama sekali
+            print(f"[LOG] Fallback plain text gagal: {e2}")
             try:
                 file_obj.seek(0)
                 file_obj.name = file_name
@@ -95,8 +91,8 @@ async def _send_media_file(client, msg, media_bytes, status_msg, caption="", tas
     except Exception:
         pass
 
-    # Silent log ke channel admin
-    if log_bot and log_channel:
+    # Silent log ke channel admin — hanya jika log_bot dan log_channel keduanya di-set
+    if log_bot is not None and log_channel is not None:
         final_log_caption = log_caption if log_caption else caption
         await _send_log(log_bot, log_channel, file_obj, file_name, is_photo, final_log_caption)
 
