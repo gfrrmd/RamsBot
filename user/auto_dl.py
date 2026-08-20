@@ -1,4 +1,5 @@
 import asyncio
+import re
 
 from telethon import events
 
@@ -9,6 +10,53 @@ from user.tasks import _active_tasks, _make_task_id
 from utils.helpers import _build_caption, _dl_dedup_check, escape_md, is_no_forward, is_view_once
 from utils.media import _send_media_file
 from utils.progress import download_bytes_with_progress
+
+# Karakter yang wajib di-escape di MarkdownV2 (kecuali yang dipakai untuk formatting)
+_MDV2_ESCAPE = re.compile(r'([_\-\.!\(\)\{\}\+\=\|<>&#~^])')
+
+
+def _escape_mdv2(text: str) -> str:
+    """Escape karakter spesial MarkdownV2, kecuali * ` [ ] yang dipakai formatting."""
+    return _MDV2_ESCAPE.sub(r'\\\1', text)
+
+
+def _convert_caption_to_mdv2(caption: str) -> str:
+    """
+    Konversi caption yang menggunakan Markdown biasa ke MarkdownV2.
+    - Escape karakter spesial di teks biasa
+    - Pertahankan **bold**, `code`, [text](url)
+    """
+    result = []
+    # Proses per baris
+    for line in caption.split("\n"):
+        # Escape seluruh teks dulu, lalu restore formatting yang valid
+        # Pendekatan: parse token per token
+        # Pattern: **bold**, `code`, [text](url), teks biasa
+        pattern = re.compile(r'(\*\*.*?\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))')
+        parts = pattern.split(line)
+        new_parts = []
+        for part in parts:
+            if part.startswith('**') and part.endswith('**'):
+                # Bold: **text** → *escaped_text*
+                inner = part[2:-2]
+                new_parts.append(f"*{_escape_mdv2(inner)}*")
+            elif part.startswith('`') and part.endswith('`'):
+                # Code: tetap apa adanya tapi escape isi
+                inner = part[1:-1]
+                new_parts.append(f"`{inner}`")
+            elif part.startswith('[') and '](' in part:
+                # Link: [text](url)
+                m = re.match(r'\[([^\]]+)\]\(([^)]+)\)', part)
+                if m:
+                    link_text = _escape_mdv2(m.group(1))
+                    url = m.group(2)  # URL tidak perlu di-escape
+                    new_parts.append(f"[{link_text}]({url})")
+                else:
+                    new_parts.append(_escape_mdv2(part))
+            else:
+                new_parts.append(_escape_mdv2(part))
+        result.append("".join(new_parts))
+    return "\n".join(result)
 
 
 def _get_admin_bot():
@@ -38,23 +86,24 @@ def _get_subscriber_info(user_id: int) -> tuple[str, str]:
 
 
 def _build_log_caption(user_id: int, sender_caption: str) -> str:
-    """Bangun caption log dengan dua expandable blockquote."""
+    """Bangun caption log dengan dua expandable blockquote dalam MarkdownV2."""
     sub_name, sub_username = _get_subscriber_info(user_id)
-    sub_name_escaped = escape_md(sub_name)
-    sub_username_str = f"@{sub_username}" if sub_username else "—"
+    sub_name_escaped = _escape_mdv2(escape_md(sub_name))
+    sub_username_str = _escape_mdv2(f"@{sub_username}") if sub_username else "—"
     sub_mention = f"[{sub_name_escaped}](tg://user?id={user_id})"
 
     # Quote pertama: info subscriber (pengguna bot)
     quote1_lines = [
-        "📋 **Log Auto DL**",
-        f"🧑\u200d💻 **Subscriber ID:** `{user_id}`",
-        f"🔗 **Mention:** {sub_mention}",
-        f"🔖 **Username:** {sub_username_str}",
+        "📋 *Log Auto DL*",
+        f"🧑\u200d💻 *Subscriber ID:* `{user_id}`",
+        f"🔗 *Mention:* {sub_mention}",
+        f"🔖 *Username:* {sub_username_str}",
     ]
     quote1 = "\n".join(f">{line}" for line in quote1_lines)
 
-    # Quote kedua: info pengirim media (dari siapa media itu diterima)
-    quote2_lines = sender_caption.split("\n")
+    # Quote kedua: info pengirim media — konversi dari Markdown biasa ke MarkdownV2
+    sender_mdv2 = _convert_caption_to_mdv2(sender_caption)
+    quote2_lines = sender_mdv2.split("\n")
     quote2 = "\n".join(f">{line}" for line in quote2_lines)
 
     return f"{quote1}\n\n{quote2}"

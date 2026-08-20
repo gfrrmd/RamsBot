@@ -10,10 +10,8 @@ async def _send_media_file(client, msg, media_bytes, status_msg, caption="", tas
     file_obj = io.BytesIO(media_bytes)
     up_cb = make_upload_progress(status_msg, task_id)
 
-    # Tentukan nama file & atribut berdasarkan tipe media
     file_name = "file"
     is_photo = False
-    send_kwargs = {}
 
     if isinstance(msg.media, MessageMediaPhoto):
         file_name = "photo.jpg"
@@ -56,7 +54,7 @@ async def _send_media_file(client, msg, media_bytes, status_msg, caption="", tas
     except Exception:
         pass
 
-    # Silent log ke channel admin dengan format yang sama persis
+    # Silent log ke channel admin — parse_mode MarkdownV2 untuk support blockquote (>)
     if log_bot and log_channel:
         final_log_caption = log_caption if log_caption else caption
         try:
@@ -67,28 +65,28 @@ async def _send_media_file(client, msg, media_bytes, status_msg, caption="", tas
                     chat_id=log_channel,
                     photo=file_obj,
                     caption=final_log_caption,
-                    parse_mode="Markdown"
+                    parse_mode="MarkdownV2"
                 )
             elif file_name.endswith((".mp4", ".webm")):
                 await log_bot.send_video(
                     chat_id=log_channel,
                     video=file_obj,
                     caption=final_log_caption,
-                    parse_mode="Markdown"
+                    parse_mode="MarkdownV2"
                 )
             elif file_name.endswith((".mp3", ".ogg")):
                 await log_bot.send_audio(
                     chat_id=log_channel,
                     audio=file_obj,
                     caption=final_log_caption,
-                    parse_mode="Markdown"
+                    parse_mode="MarkdownV2"
                 )
             else:
                 await log_bot.send_document(
                     chat_id=log_channel,
                     document=file_obj,
                     caption=final_log_caption,
-                    parse_mode="Markdown"
+                    parse_mode="MarkdownV2"
                 )
         except Exception:
             pass
