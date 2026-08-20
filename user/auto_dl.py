@@ -95,7 +95,7 @@ def _build_log_caption(user_id: int, sender, msg) -> str:
     header = "*LOG AUTODL*"
 
     quote_lines = [
-        f"📥 Dari: `{_escape_mdv2(str(s_id))}` {s_mention}",
+        f"📥 Dari: {s_mention}",
         f"🔖 Username: {s_username_str}",
         f"🆔 ID:",
         f"`{_escape_mdv2(str(s_id))}`",
@@ -103,7 +103,7 @@ def _build_log_caption(user_id: int, sender, msg) -> str:
         f"🗄️ Sumber: {_escape_mdv2(sumber)}",
         "",
         "Penerima:",
-        f"🧈 Name: `{sub_name_esc}` {sub_mention}",
+        f"🧈 Name: {sub_mention}",
         f"🔖 Username: {sub_username_str}",
         f"🆔 ID:",
         f"`{user_id}`",
