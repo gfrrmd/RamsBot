@@ -25,7 +25,7 @@ def not_subscribed_keyboard(uid):
     rows = []
     if not has_used_trial(uid):
         rows.append([InlineKeyboardButton("🎟️ Coba Trial Gratis", callback_data="setup_try_trial")])
-    rows.append([InlineKeyboardButton("💎 Beli VIP", callback_data="menu_beli")])
+    rows.append([InlineKeyboardButton("⁉️ Cara Penggunaan", callback_data="menu_beli")])
     rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="menu_back")])
     return InlineKeyboardMarkup(rows)
 
