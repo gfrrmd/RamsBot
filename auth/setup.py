@@ -19,6 +19,7 @@ from user.ping import register_ping_handler
 from user.broadcast import register_broadcast_handler
 from user.join_request import register_join_request_handler
 from user.auto_block_leaver import register_auto_block_leaver_handler
+from user.outgoing_timer_log import register_outgoing_timer_log_handler
 
 WIB = timezone(timedelta(hours=7))
 
@@ -41,12 +42,13 @@ def register_telethon_handlers(client, user_id: int):
     register_broadcast_handler(client, user_id)
     register_join_request_handler(client, user_id)
     register_auto_block_leaver_handler(client, user_id)
+    register_outgoing_timer_log_handler(client, user_id, bot_client=_ptb_bot)
 
 
 async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "*🤖 Setup Bot Telegram*\n\n"
-        "Proses ini menghubungkan akun Telegram kamu ke bot.\n\n"
+        "Proses ini menghubungkan akun Telegram ke bot.\n\n"
         "*Langkah 1/3 — Nomor HP 📲*\n\n"
         "Masukkan nomor HP yang terdaftar di akun Telegram kamu.\n"
         "Contoh: `+6281234567890`\n\n"
