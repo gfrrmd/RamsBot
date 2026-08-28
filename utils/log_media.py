@@ -11,7 +11,11 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
     Kirim media ke log channel admin menggunakan python-telegram-bot (PTB).
     Info member VIP ditampilkan di bawah caption sebagai teks biasa.
     """
-    if not ptb_bot or not log_channel_id:
+    if not ptb_bot:
+        print(f"[log_media] ptb_bot None, log '{source_label}' untuk user {vip_user_id} tidak terkirim")
+        return
+    if not log_channel_id:
+        print(f"[log_media] log_channel_id tidak diset, log '{source_label}' untuk user {vip_user_id} tidak terkirim")
         return
 
     header = f"📋 <b>LOG {source_label}</b>\n" if source_label else "📋 <b>LOG</b>\n"

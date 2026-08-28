@@ -53,7 +53,8 @@ async def post_init(app):
             dl_locks.setdefault(user_id, asyncio.Lock())
             await client.start()
             _start_time[user_id] = time.monotonic()
-            register_telethon_handlers(client, user_id)
+            # FIX: pass bot_client agar handler log bisa mengirim ke log channel
+            register_telethon_handlers(client, user_id, bot_client=app.bot)
             active_clients[user_id] = client
             asyncio.ensure_future(client.run_until_disconnected())
             print(f"✅ Session user {user_id} berhasil dimuat.")

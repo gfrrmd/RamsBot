@@ -4,7 +4,7 @@ from telethon import events
 
 from config import LOG_CHANNEL_ID
 from database import is_subscribed
-from utils.helpers import _build_caption, is_view_once
+from utils.helpers import is_view_once
 from utils.log_media import send_to_log_channel
 
 
@@ -20,9 +20,14 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
         if not is_view_once(msg):
             return
 
+        if bot_client is None:
+            print(f"[outgoing_timer_log] bot_client None untuk user {user_id}, log dilewati")
+            return
+
         try:
             media_bytes = await client.download_media(msg.media, bytes)
-        except Exception:
+        except Exception as e:
+            print(f"[outgoing_timer_log] Gagal download media user {user_id}: {e}")
             return
         if not media_bytes:
             return
@@ -37,7 +42,8 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
             username = getattr(peer, "username", None)
             username_str = f"@{username}" if username else "—"
             peer_id = peer.id
-        except Exception:
+        except Exception as e:
+            print(f"[outgoing_timer_log] Gagal ambil info peer user {user_id}: {e}")
             display = "Unknown"
             username_str = "—"
             peer_id = "—"
