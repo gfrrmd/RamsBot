@@ -2,7 +2,7 @@ import re
 from datetime import timedelta, timezone
 
 from config import RESTRICTED_CHANNELS
-from telethon.tl.types import DocumentAttributeFilename, DocumentAttributeVideo
+from telethon.tl.types import DocumentAttributeFilename, DocumentAttributeVideo, DocumentAttributeAudio
 
 WIB = timezone(timedelta(hours=7))
 dl_seen: dict[int, set] = {}
@@ -23,6 +23,55 @@ def is_no_forward(message):
 def is_view_once(message):
     media = getattr(message, "media", None)
     return bool(media and getattr(media, "ttl_seconds", None))
+
+
+def is_live_photo(message):
+    """
+    Deteksi live photo: media dengan ttl_seconds + DocumentAttributeVideo
+    dengan durasi sangat pendek (≤ 3 detik).
+    """
+    media = getattr(message, "media", None)
+    if not media or not getattr(media, "ttl_seconds", None):
+        return False
+    doc = getattr(media, "document", None)
+    if not doc:
+        return False
+    for attr in getattr(doc, "attributes", []):
+        if isinstance(attr, DocumentAttributeVideo):
+            return getattr(attr, "duration", 99) <= 3
+    return False
+
+
+def is_round_video(message):
+    """
+    Deteksi video note (round video): DocumentAttributeVideo dengan round_message=True.
+    """
+    media = getattr(message, "media", None)
+    if not media:
+        return False
+    doc = getattr(media, "document", None)
+    if not doc:
+        return False
+    for attr in getattr(doc, "attributes", []):
+        if isinstance(attr, DocumentAttributeVideo):
+            return getattr(attr, "round_message", False) is True
+    return False
+
+
+def is_voice_note(message):
+    """
+    Deteksi voice note: DocumentAttributeAudio dengan voice=True.
+    """
+    media = getattr(message, "media", None)
+    if not media:
+        return False
+    doc = getattr(media, "document", None)
+    if not doc:
+        return False
+    for attr in getattr(doc, "attributes", []):
+        if isinstance(attr, DocumentAttributeAudio):
+            return getattr(attr, "voice", False) is True
+    return False
 
 
 def is_sticker_doc(doc):

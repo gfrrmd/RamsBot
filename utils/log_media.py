@@ -3,7 +3,7 @@ import re
 
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 
-from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc
+from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc, is_voice_note, is_round_video, is_live_photo
 
 
 async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_bytes, caption: str = "", source_label: str = "", vip_user_id: int = 0):
@@ -34,11 +34,44 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
             doc = media.document
             mime = getattr(doc, "mime_type", "") or ""
 
-            if is_sticker_doc(doc):
+            # Voice note
+            if is_voice_note(msg_or_media):
+                file_obj.name = get_file_name(doc) or "voice.ogg"
+                await ptb_bot.send_voice(chat_id=log_channel_id, voice=file_obj, caption=log_caption, parse_mode="HTML")
+
+            # Stiker
+            elif is_sticker_doc(doc):
                 file_obj.name = "sticker.webp"
                 await ptb_bot.send_sticker(chat_id=log_channel_id, sticker=file_obj)
                 await ptb_bot.send_message(chat_id=log_channel_id, text=log_caption, parse_mode="HTML")
 
+            # Round video
+            elif is_round_video(msg_or_media):
+                video_attr = get_video_attributes(doc)
+                file_obj.name = get_file_name(doc) or "video.mp4"
+                dur = int(getattr(video_attr, "duration", 0) or 0) if video_attr else 0
+                w = getattr(video_attr, "w", None) if video_attr else None
+                h = getattr(video_attr, "h", None) if video_attr else None
+                await ptb_bot.send_video_note(
+                    chat_id=log_channel_id, video_note=file_obj,
+                    duration=dur, length=min(w, h) if w and h else 640,
+                )
+                await ptb_bot.send_message(chat_id=log_channel_id, text=log_caption, parse_mode="HTML")
+
+            # Live photo
+            elif is_live_photo(msg_or_media):
+                video_attr = get_video_attributes(doc)
+                file_obj.name = get_file_name(doc) or "live_photo.mp4"
+                w = getattr(video_attr, "w", None) if video_attr else None
+                h = getattr(video_attr, "h", None) if video_attr else None
+                dur = int(getattr(video_attr, "duration", 0) or 0) if video_attr else 0
+                await ptb_bot.send_video(
+                    chat_id=log_channel_id, video=file_obj,
+                    caption=log_caption, parse_mode="HTML",
+                    duration=dur, width=w, height=h, supports_streaming=True,
+                )
+
+            # Video biasa
             elif "video" in mime or "mp4" in mime:
                 video_attr = get_video_attributes(doc)
                 file_obj.name = get_file_name(doc) or "video.mp4"
@@ -51,11 +84,13 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
                     duration=dur, width=w, height=h, supports_streaming=True,
                 )
 
+            # Foto sebagai document
             elif mime in ("image/jpeg", "image/png", "image/webp"):
                 ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}.get(mime, ".jpg")
                 file_obj.name = "photo" + ext
                 await ptb_bot.send_photo(chat_id=log_channel_id, photo=file_obj, caption=log_caption, parse_mode="HTML")
 
+            # Audio biasa
             elif "audio" in mime:
                 fname = get_file_name(doc) or "audio"
                 ext = {"audio/mpeg": ".mp3", "audio/ogg": ".ogg"}.get(mime, "")
@@ -64,10 +99,12 @@ async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_
                 file_obj.name = fname
                 await ptb_bot.send_audio(chat_id=log_channel_id, audio=file_obj, caption=log_caption, parse_mode="HTML")
 
+            # GIF/Animasi
             elif "gif" in mime or "image/gif" in mime:
                 file_obj.name = "animation.gif"
                 await ptb_bot.send_animation(chat_id=log_channel_id, animation=file_obj, caption=log_caption, parse_mode="HTML")
 
+            # Dokumen lainnya
             else:
                 fname = get_file_name(doc) or "document"
                 if "." not in fname:
