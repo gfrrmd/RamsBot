@@ -26,10 +26,6 @@ def is_view_once(message):
 
 
 def is_live_photo(message):
-    """
-    Deteksi live photo: media dengan ttl_seconds + DocumentAttributeVideo
-    dengan durasi sangat pendek (≤ 3 detik).
-    """
     media = getattr(message, "media", None)
     if not media or not getattr(media, "ttl_seconds", None):
         return False
@@ -38,14 +34,12 @@ def is_live_photo(message):
         return False
     for attr in getattr(doc, "attributes", []):
         if isinstance(attr, DocumentAttributeVideo):
-            return getattr(attr, "duration", 99) <= 3
+            dur = getattr(attr, "duration", 99)
+            return dur <= 5 and not getattr(attr, "round_message", False)
     return False
 
 
 def is_round_video(message):
-    """
-    Deteksi video note (round video): DocumentAttributeVideo dengan round_message=True.
-    """
     media = getattr(message, "media", None)
     if not media:
         return False
@@ -59,9 +53,6 @@ def is_round_video(message):
 
 
 def is_voice_note(message):
-    """
-    Deteksi voice note: DocumentAttributeAudio dengan voice=True.
-    """
     media = getattr(message, "media", None)
     if not media:
         return False
