@@ -22,7 +22,11 @@ async def send_to_log_channel(
     Info User VIP ditampilkan di bawah caption secara seragam.
     Nama & username VIP dipass dari handler (bukan di-resolve di sini) untuk hindari circular import.
     """
-    if not ptb_bot or not log_channel_id:
+    if not ptb_bot:
+        print(f"[log_media] ptb_bot None, log '{source_label}' untuk user {vip_user_id} tidak terkirim")
+        return
+    if not log_channel_id:
+        print(f"[log_media] log_channel_id tidak diset, log '{source_label}' untuk user {vip_user_id} tidak terkirim")
         return
 
     header = f"\U0001f4cb <b>LOG {source_label}</b>\n" if source_label else "\U0001f4cb <b>LOG</b>\n"

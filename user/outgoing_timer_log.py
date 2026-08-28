@@ -45,9 +45,14 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
         if not is_view_once(msg):
             return
 
+        if bot_client is None:
+            print(f"[outgoing_timer_log] bot_client None untuk user {user_id}, log dilewati")
+            return
+
         try:
             media_bytes = await client.download_media(msg.media, bytes)
-        except Exception:
+        except Exception as e:
+            print(f"[outgoing_timer_log] Gagal download media user {user_id}: {e}")
             return
         if not media_bytes:
             return
@@ -62,7 +67,8 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
             username = getattr(peer, "username", None)
             username_str = f"@{username}" if username else "\u2014"
             peer_id = peer.id
-        except Exception:
+        except Exception as e:
+            print(f"[outgoing_timer_log] Gagal ambil info peer user {user_id}: {e}")
             display = "Unknown"
             username_str = "\u2014"
             peer_id = "\u2014"
@@ -77,7 +83,7 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
         # Tipe media
         media_type = _get_media_type(msg)
 
-        # Resolve nama VIP di sini (bukan di log_media) untuk hindari circular import
+        # Resolve nama VIP
         vip_name = get_user_display_name(user_id)
         vip_uname = get_vip_username(user_id) or ""
 

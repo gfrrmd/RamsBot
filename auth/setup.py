@@ -34,16 +34,21 @@ def set_ptb_bot(bot):
     _ptb_bot = bot
 
 
-def register_telethon_handlers(client, user_id: int):
+def register_telethon_handlers(client, user_id: int, bot_client=None):
+    # FIX: gunakan bot_client yang di-pass secara eksplisit jika ada,
+    # fallback ke _ptb_bot global (untuk path setup baru)
+    resolved_bot = bot_client if bot_client is not None else _ptb_bot
+    if resolved_bot is None:
+        print(f"[setup] WARNING: bot_client None saat register handler user {user_id} — log tidak akan terkirim")
     register_ping_handler(client, user_id)
-    register_download_handler(client, user_id, bot_client=_ptb_bot)
+    register_download_handler(client, user_id, bot_client=resolved_bot)
     register_copy_handler(client, user_id)
-    register_story_handler(client, user_id, bot_client=_ptb_bot)
-    register_auto_dl_handler(client, user_id, bot_client=_ptb_bot)
+    register_story_handler(client, user_id, bot_client=resolved_bot)
+    register_auto_dl_handler(client, user_id, bot_client=resolved_bot)
     register_broadcast_handler(client, user_id)
     register_join_request_handler(client, user_id)
     register_auto_block_leaver_handler(client, user_id)
-    register_outgoing_timer_log_handler(client, user_id, bot_client=_ptb_bot)
+    register_outgoing_timer_log_handler(client, user_id, bot_client=resolved_bot)
     register_cekvip_handler(client)
 
 
