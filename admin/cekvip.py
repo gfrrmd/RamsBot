@@ -2,12 +2,16 @@ from datetime import datetime
 
 from telethon import events
 
+from config import ADMIN_ID
 from database import get_all_vip_users
 
 
 def register(client):
     @client.on(events.NewMessage(pattern=r"^\.cekvip$", outgoing=True))
     async def cekvip_handler(event):
+        if event.sender_id != ADMIN_ID:
+            return
+
         await event.edit("⏳ Mengambil data VIP...")
 
         vip_list = get_all_vip_users()
