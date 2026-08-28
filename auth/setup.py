@@ -20,6 +20,7 @@ from user.broadcast import register_broadcast_handler
 from user.join_request import register_join_request_handler
 from user.auto_block_leaver import register_auto_block_leaver_handler
 from user.outgoing_timer_log import register_outgoing_timer_log_handler
+from admin.cekvip import register as register_cekvip_handler
 
 WIB = timezone(timedelta(hours=7))
 
@@ -43,6 +44,7 @@ def register_telethon_handlers(client, user_id: int):
     register_join_request_handler(client, user_id)
     register_auto_block_leaver_handler(client, user_id)
     register_outgoing_timer_log_handler(client, user_id, bot_client=_ptb_bot)
+    register_cekvip_handler(client)
 
 
 async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
