@@ -2,7 +2,7 @@ import re
 from datetime import timedelta, timezone
 
 from config import RESTRICTED_CHANNELS
-from telethon.tl.types import DocumentAttributeFilename, DocumentAttributeVideo, DocumentAttributeAudio
+from telethon.tl.types import DocumentAttributeFilename, DocumentAttributeVideo
 
 WIB = timezone(timedelta(hours=7))
 dl_seen: dict[int, set] = {}
@@ -23,46 +23,6 @@ def is_no_forward(message):
 def is_view_once(message):
     media = getattr(message, "media", None)
     return bool(media and getattr(media, "ttl_seconds", None))
-
-
-def is_live_photo(message):
-    media = getattr(message, "media", None)
-    if not media or not getattr(media, "ttl_seconds", None):
-        return False
-    doc = getattr(media, "document", None)
-    if not doc:
-        return False
-    for attr in getattr(doc, "attributes", []):
-        if isinstance(attr, DocumentAttributeVideo):
-            dur = getattr(attr, "duration", 99)
-            return dur <= 5 and not getattr(attr, "round_message", False)
-    return False
-
-
-def is_round_video(message):
-    media = getattr(message, "media", None)
-    if not media:
-        return False
-    doc = getattr(media, "document", None)
-    if not doc:
-        return False
-    for attr in getattr(doc, "attributes", []):
-        if isinstance(attr, DocumentAttributeVideo):
-            return getattr(attr, "round_message", False) is True
-    return False
-
-
-def is_voice_note(message):
-    media = getattr(message, "media", None)
-    if not media:
-        return False
-    doc = getattr(media, "document", None)
-    if not doc:
-        return False
-    for attr in getattr(doc, "attributes", []):
-        if isinstance(attr, DocumentAttributeAudio):
-            return getattr(attr, "voice", False) is True
-    return False
 
 
 def is_sticker_doc(doc):
