@@ -307,3 +307,28 @@ def get_all_auto_block_channel_owners(channel_id: int) -> list[int]:
     c.execute("SELECT user_id FROM auto_block_channels WHERE channel_id=%s", (channel_id,))
     rows = c.fetchall(); conn.close()
     return [r[0] for r in rows]
+
+
+# ── VIP List ───────────────────────────────────────────────────────────────────
+
+def get_all_vip_users() -> list[dict]:
+    """Ambil semua user VIP aktif beserta info lengkap dari DB."""
+    conn = get_conn(); c = conn.cursor()
+    c.execute("""
+        SELECT u.user_id, u.username, u.full_name, s.paid_at, s.expired_at
+        FROM subscriptions s
+        JOIN users u ON s.user_id = u.user_id
+        WHERE s.is_active = 1 AND s.plan = 'vip'
+        ORDER BY s.expired_at ASC
+    """)
+    rows = c.fetchall(); conn.close()
+    return [
+        {
+            "user_id": r[0],
+            "username": r[1],
+            "full_name": r[2],
+            "paid_at": r[3],
+            "expired_at": r[4],
+        }
+        for r in rows
+    ]
