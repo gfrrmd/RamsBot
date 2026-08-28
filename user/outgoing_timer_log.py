@@ -11,7 +11,7 @@ from telethon.tl.types import (
 )
 
 from config import LOG_CHANNEL_ID
-from database import is_subscribed, get_user_display_name, get_vip_username
+from database import is_subscribed
 from utils.helpers import _build_caption, is_view_once
 from utils.log_media import send_to_log_channel
 
@@ -21,18 +21,18 @@ WIB = timezone(timedelta(hours=7))
 def _get_media_type(msg) -> str:
     """Deteksi tipe media dari message."""
     if isinstance(msg.media, MessageMediaPhoto):
-        return "🖼️ foto"
+        return "\U0001f5bc\ufe0f foto"
     if isinstance(msg.media, MessageMediaDocument):
         doc = msg.media.document
         attrs = {type(a): a for a in doc.attributes}
         if DocumentAttributeVideo in attrs:
-            return "🎬 video"
+            return "\U0001f3ac video"
         if DocumentAttributeAudio in attrs:
             audio = attrs[DocumentAttributeAudio]
-            return "🎤 voice note" if getattr(audio, "voice", False) else "🎵 audio"
+            return "\U0001f3a4 voice note" if getattr(audio, "voice", False) else "\U0001f3b5 audio"
         if DocumentAttributeFilename in attrs:
-            return "📄 dokumen"
-    return "❓ unknown"
+            return "\U0001f4c4 dokumen"
+    return "\u2753 unknown"
 
 
 def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
@@ -62,37 +62,29 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
             title = getattr(peer, "title", "") or ""
             display = (title or f"{first} {last}").strip() or "Unknown"
             username = getattr(peer, "username", None)
-            username_str = f"@{username}" if username else "—"
+            username_str = f"@{username}" if username else "\u2014"
             peer_id = peer.id
         except Exception:
             display = "Unknown"
-            username_str = "—"
-            peer_id = "—"
-
-        # Ambil info pengirim (user VIP)
-        vip_name = get_user_display_name(user_id)
-        vip_username = get_vip_username(user_id)
-        vip_username_str = f"@{vip_username}" if vip_username else "—"
+            username_str = "\u2014"
+            peer_id = "\u2014"
 
         # Timestamp WIB
         try:
             sent_wib = msg.date.astimezone(WIB)
             timestamp_str = sent_wib.strftime("%d %b %Y, %H:%M WIB")
         except Exception:
-            timestamp_str = "—"
+            timestamp_str = "\u2014"
 
         # Tipe media
         media_type = _get_media_type(msg)
 
         caption = (
-            f"📤 **Dikirim ke:** {display}\n"
-            f"🔖 **Username:** {username_str}\n"
-            f"🆔 **ID Penerima:** `{peer_id}`\n"
-            f"\n"
-            f"👤 **Pengirim VIP:** {vip_name} ({vip_username_str})\n"
-            f"🆔 **ID VIP:** `{user_id}`\n"
-            f"🕒 **Waktu:** {timestamp_str}\n"
-            f"🎥 **Tipe Media:** {media_type}"
+            f"\U0001f4e4 **Dikirim ke:** {display}\n"
+            f"\U0001f516 **Username:** {username_str}\n"
+            f"\U0001f194 **ID Penerima:** `{peer_id}`\n"
+            f"\U0001f552 **Waktu:** {timestamp_str}\n"
+            f"\U0001f3a5 **Tipe Media:** {media_type}"
         )
 
         await send_to_log_channel(

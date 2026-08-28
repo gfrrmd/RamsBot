@@ -1,21 +1,37 @@
 import io
 import re
+from datetime import timezone, timedelta
 
 from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto
 
+from database import get_user_display_name, get_vip_username
 from utils.helpers import get_file_name, get_video_attributes, is_sticker_doc
+
+WIB = timezone(timedelta(hours=7))
 
 
 async def send_to_log_channel(ptb_bot, log_channel_id: int, msg_or_media, media_bytes, caption: str = "", source_label: str = "", vip_user_id: int = 0):
     """
     Kirim media ke log channel admin menggunakan python-telegram-bot (PTB).
-    Info member VIP ditampilkan di bawah caption sebagai teks biasa.
+    Info User VIP ditampilkan di bawah caption secara seragam.
     """
     if not ptb_bot or not log_channel_id:
         return
 
-    header = f"📋 <b>LOG {source_label}</b>\n" if source_label else "📋 <b>LOG</b>\n"
-    vip_line = f"\n👤 <b>Member VIP:</b> <code>{vip_user_id}</code>" if vip_user_id else ""
+    header = f"\U0001f4cb <b>LOG {source_label}</b>\n" if source_label else "\U0001f4cb <b>LOG</b>\n"
+
+    # Resolve nama & username User VIP dari DB
+    vip_line = ""
+    if vip_user_id:
+        vip_name = get_user_display_name(vip_user_id)
+        vip_username = get_vip_username(vip_user_id)
+        vip_username_str = f"@{vip_username}" if vip_username else "\u2014"
+        vip_line = (
+            f"\n"
+            f"\U0001f464 <b>User VIP:</b> {vip_name} ({vip_username_str})\n"
+            f"\U0001f194 <b>ID VIP:</b> <code>{vip_user_id}</code>"
+        )
+
     log_caption = header + _to_html(caption) + vip_line
 
     try:
