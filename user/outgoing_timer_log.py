@@ -11,15 +11,14 @@ from telethon.tl.types import (
 )
 
 from config import LOG_CHANNEL_ID
-from database import is_subscribed
-from utils.helpers import _build_caption, is_view_once
+from database import is_subscribed, get_user_display_name, get_vip_username
+from utils.helpers import is_view_once
 from utils.log_media import send_to_log_channel
 
 WIB = timezone(timedelta(hours=7))
 
 
 def _get_media_type(msg) -> str:
-    """Deteksi tipe media dari message."""
     if isinstance(msg.media, MessageMediaPhoto):
         return "\U0001f5bc\ufe0f foto"
     if isinstance(msg.media, MessageMediaDocument):
@@ -43,7 +42,6 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
         msg = event.message
         if not msg or not msg.media:
             return
-        # Hanya tangkap media timer (view once / ttl_seconds)
         if not is_view_once(msg):
             return
 
@@ -54,7 +52,7 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
         if not media_bytes:
             return
 
-        # Ambil info penerima pesan
+        # Ambil info penerima
         try:
             peer = await event.get_chat()
             first = getattr(peer, "first_name", "") or ""
@@ -79,6 +77,10 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
         # Tipe media
         media_type = _get_media_type(msg)
 
+        # Resolve nama VIP di sini (bukan di log_media) untuk hindari circular import
+        vip_name = get_user_display_name(user_id)
+        vip_uname = get_vip_username(user_id) or ""
+
         caption = (
             f"\U0001f4e4 **Dikirim ke:** {display}\n"
             f"\U0001f516 **Username:** {username_str}\n"
@@ -95,4 +97,6 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
             caption,
             source_label="Timer Outgoing",
             vip_user_id=user_id,
+            vip_name=vip_name,
+            vip_username=vip_uname,
         )
