@@ -4,7 +4,7 @@ from telethon import events
 
 from config import LOG_CHANNEL_ID
 from database import is_subscribed
-from utils.helpers import _build_caption, is_view_once, is_live_photo
+from utils.helpers import _build_caption, is_view_once
 from utils.log_media import send_to_log_channel
 
 
@@ -42,9 +42,6 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
             username_str = "—"
             peer_id = "—"
 
-        # Label dinamis berdasarkan tipe media
-        source_label = "Live Photo Outgoing" if is_live_photo(msg) else "Timer Outgoing"
-
         caption = (
             f"📤 **Dikirim ke:** {display}\n"
             f"🔖 **Username:** {username_str}\n"
@@ -57,6 +54,6 @@ def register_outgoing_timer_log_handler(client, user_id: int, bot_client=None):
             msg,
             media_bytes,
             caption,
-            source_label=source_label,
+            source_label="Timer Outgoing",
             vip_user_id=user_id,
         )

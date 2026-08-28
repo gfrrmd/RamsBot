@@ -6,7 +6,7 @@ from client_manager import dl_locks, stop_client_for_user
 from config import LOG_CHANNEL_ID
 from database import get_auto_dl_view_once, is_subscribed
 from user.tasks import _active_tasks, _make_task_id
-from utils.helpers import _build_caption, _dl_dedup_check, is_no_forward, is_view_once, is_live_photo
+from utils.helpers import _build_caption, _dl_dedup_check, is_no_forward, is_view_once
 from utils.log_media import send_to_log_channel
 from utils.media import _send_media_file
 from utils.progress import download_bytes_with_progress
@@ -42,12 +42,9 @@ def register_auto_dl_handler(client, user_id: int, bot_client=None):
 
 
 async def _auto_dl_process(client, msg, user_id: int, task_id: str, bot_client=None):
-    # Notifikasi berbeda untuk live photo vs view-once biasa
-    status_text = "📸 Live Photo terdeteksi..." if is_live_photo(msg) else "⏱️ Auto DL terdeteksi..."
-
     try:
-        status_msg = await client.send_message("me", f"{status_text} 0.00%\n\n⛔ Ketik `.cancel #{task_id}` untuk membatalkan")
-        media_bytes = await download_bytes_with_progress(client, msg.media, status_msg, task_id, start_text=status_text)
+        status_msg = await client.send_message("me", f"⏱️ Auto DL terdeteksi... 0.00%\n\n⛔ Ketik `.cancel #{task_id}` untuk membatalkan")
+        media_bytes = await download_bytes_with_progress(client, msg.media, status_msg, task_id, start_text="⏱️ Auto DL terdeteksi")
     except asyncio.CancelledError:
         try:
             await client.send_message("me", f"⛔ Auto DL `#{task_id}` dibatalkan.")
