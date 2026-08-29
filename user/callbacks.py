@@ -106,7 +106,7 @@ async def user_callback_handler(update: Update, context: ContextTypes.DEFAULT_TY
     if data == "menu_fitur":
         await query.edit_message_text("✨ *Fitur VIP*\n\nPilih fitur di bawah:", reply_markup=fitur_vip_keyboard(), parse_mode="Markdown"); return
     if data == "menu_beli":
-        await query.edit_message_text("⁉️ *Cara Penggunaan & Akses VIP*\n\nUntuk seputar pertanyaan & akses VIP silahkan hubungi admin @kqrbit", parse_mode="Markdown", reply_markup=beli_keyboard()); return
+        await query.edit_message_text("⁉️ *Cara Penggunaan & Akses VIP*\n\nUntuk seputar pertanyaan & akses VIP silahkan hubungi admin @urziea", parse_mode="Markdown", reply_markup=beli_keyboard()); return
     if data == "fitur_timer":
         await query.edit_message_text(
             "⏱️ *Download Media Timer & View Once*\n\n"
