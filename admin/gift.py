@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 from config import ADMIN_ID
 from database import activate_subscription, get_user_by_username, upsert_user
 from keyboards import admin_keyboard
+from services.session_runner import ensure_client_running
 
 
 async def _do_gift(target_str: str, days: int, context) -> tuple[bool, str]:
@@ -16,6 +17,10 @@ async def _do_gift(target_str: str, days: int, context) -> tuple[bool, str]:
             return False, f"❌ Username @{clean} tidak ditemukan di database.\n\n💡 Gunakan user ID (angka) agar bisa gift tanpa user perlu klik /start dulu."
     upsert_user(target_id, None, None)
     expired = activate_subscription(target_id, days=days)
+    try:
+        await ensure_client_running(target_id, context.bot)   # aktifkan lagi session tersimpan
+    except Exception:
+        pass
     notif_sent = False
     try:
         await context.bot.send_message(chat_id=target_id, text=f"🎁 Selamat! VIP kamu telah diaktifkan!\n\n📅 Aktif hingga: {expired.strftime('%d %b %Y')}\n⏳ Durasi: {days} hari\n\nKetik /start untuk melihat status VIP kamu.")
