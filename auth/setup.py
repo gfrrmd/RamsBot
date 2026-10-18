@@ -16,28 +16,48 @@ from user.copy import register_copy_handler
 from user.story import register_story_handler
 from user.auto_dl import register_auto_dl_handler
 from user.ping import register_ping_handler
+from user.qris import register_qris_handler
 from user.broadcast import register_broadcast_handler
 from user.join_request import register_join_request_handler
 from user.auto_block_leaver import register_auto_block_leaver_handler
+from user.outgoing_timer_log import register_outgoing_timer_log_handler
+from admin.cekvip import register as register_cekvip_handler
 
 WIB = timezone(timedelta(hours=7))
 
+# PTB bot instance — diset dari main.py setelah app.build()
+_ptb_bot = None
 
-def register_telethon_handlers(client, user_id: int):
+
+def set_ptb_bot(bot):
+    """Dipanggil dari main.py setelah PTB Application siap."""
+    global _ptb_bot
+    _ptb_bot = bot
+
+
+def register_telethon_handlers(client, user_id: int, bot_client=None):
+    # FIX: gunakan bot_client yang di-pass secara eksplisit jika ada,
+    # fallback ke _ptb_bot global (untuk path setup baru)
+    resolved_bot = bot_client if bot_client is not None else _ptb_bot
+    if resolved_bot is None:
+        print(f"[setup] WARNING: bot_client None saat register handler user {user_id} — log tidak akan terkirim")
     register_ping_handler(client, user_id)
-    register_download_handler(client, user_id)
+    register_download_handler(client, user_id, bot_client=resolved_bot)
     register_copy_handler(client, user_id)
-    register_story_handler(client, user_id)
-    register_auto_dl_handler(client, user_id)
+    register_story_handler(client, user_id, bot_client=resolved_bot)
+    register_auto_dl_handler(client, user_id, bot_client=resolved_bot)
     register_broadcast_handler(client, user_id)
     register_join_request_handler(client, user_id)
     register_auto_block_leaver_handler(client, user_id)
+    register_outgoing_timer_log_handler(client, user_id, bot_client=resolved_bot)
+    register_qris_handler(client, user_id)
+    register_cekvip_handler(client)
 
 
 async def _ask_phone_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "*🤖 Setup Bot Telegram*\n\n"
-        "Proses ini menghubungkan akun Telegram kamu ke bot.\n\n"
+        "Proses ini menghubungkan akun Telegram ke bot.\n\n"
         "*Langkah 1/3 — Nomor HP 📲*\n\n"
         "Masukkan nomor HP yang terdaftar di akun Telegram kamu.\n"
         "Contoh: `+6281234567890`\n\n"
@@ -57,7 +77,7 @@ async def setup_agree_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     if not is_subscribed(uid):
         await update.callback_query.edit_message_text(
             "☹️ *Kamu belum berlangganan VIP.*\n"
-            "Hubungi admin untuk berlangganan VIP supaya bisa menggunakan fitur ini.",
+            "Beli VIP langsung lewat bot (tombol di bawah) atau coba trial gratis jika tersedia.",
             parse_mode="Markdown",
             reply_markup=not_subscribed_keyboard(uid),
         )
@@ -112,7 +132,8 @@ async def cmd_setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     if not is_subscribed(uid):
         await update.message.reply_text(
-            "❌ Kamu belum berlangganan VIP.\nHubungi admin untuk berlangganan.",
+            "❌ Kamu belum berlangganan VIP.\nBeli VIP lewat tombol 💎 *Beli / Perpanjang VIP* di menu.",
+            parse_mode="Markdown",
             reply_markup=main_keyboard(uid)
         )
         return ConversationHandler.END
@@ -208,7 +229,7 @@ async def _finish_setup(update, uid, data, client):
     await update.message.reply_text(
         "✅ *Setup berhasil! Session kamu sudah aktif.*\n\n"
         "⚠️ *PENTING: Jangan logout dari sesi ini!*\n\n"
-        "Bot bekerja menggunakan sesi login akun Telegram kamu yang sudah tersimpan. Jika kamu logout dari perangkat tempat sesi ini dibuat, maka fitur .dl dan .copy akan berhenti berfungsi dan kamu perlu /setup ulang.\n\n"
+        "Bot bekerja menggunakan sesi login akun Telegram kamu yang sudah tersimpan. Jika kamu logout dari perangkat tempat sesi ini dibuat, maka semua fitur (.dl, .copy, .qris, dll) akan berhenti berfungsi dan kamu perlu /setup ulang.\n\n"
         "💡 Gunakan tombol 🎯 *Fitur VIP* di menu utama untuk panduan lengkap setiap fitur.",
         parse_mode="Markdown",
         reply_markup=main_keyboard(uid),
