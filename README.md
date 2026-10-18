@@ -9,60 +9,54 @@ Bot Telegram VIP berbasis **Telethon** yang memungkinkan user berlangganan dan m
 ### 👤 User (VIP)
 | Fitur | Deskripsi |
 |---|---|
-| `/setup` | Hubungkan akun Telegram ke bot (login via nomor HP + OTP) |
-| Download media | Download media dari pesan Telegram |
-| Copy pesan | Salin pesan dari channel/grup ke tempat lain |
-| Story viewer | Lihat story Telegram secara anonim |
-| Auto download | Download media view-once secara otomatis |
-| Broadcast | Kirim pesan ke banyak grup/channel sekaligus |
-| Ping | Cek latensi dan status koneksi session |
+| Beli / Perpanjang VIP | Bayar langsung di bot via QRIS dinamis, kirim bukti, admin approve. Perpanjang = sisa hari ditambah otomatis |
+| `/setup` | Hubungkan akun Telegram (nomor HP + OTP + 2FA) |
+| `.dl` / Auto DL | Download media timer & view-once |
+| `.copy (link)` | Salin pesan dari channel/grup restricted |
+| `.story (link)` | Download story |
+| `.bc (pesan)` | Broadcast ke semua grup (+ blacklist `.addbl` `.delbl` `.listbl`) |
+| `.acceptall` / `.stopaccept` | Auto approve join request |
+| Auto Block Leaver | Blokir otomatis member yang keluar dari channel pilihan |
+| `.ping` | Cek koneksi session |
+| **`.qris (nominal)`** 🆕 | Ubah QRIS statis → dinamis. Contoh: `.qris 25000`, `.qris 25k`, `.qris 1,5jt` |
+| Pengingat VIP 🆕 | Notifikasi H-3 & H-1 sebelum VIP habis |
 
-### 🛡️ Admin
+**Setup QRIS:** Bot → 🎯 Fitur VIP → 💳 QRIS Dinamis → kirim gambar QRIS statis (atau tempel kode QRIS).
+Hasil `.qris` dikirim di chat tempat command diketik.
+
+### 🛡️ Admin (`/admin`, `/stats`, `/backup`)
 | Fitur | Deskripsi |
 |---|---|
-| `/gift <user_id\|@username> [hari]` | Berikan VIP ke user |
-| `/revoke <user_id\|@username>` | Cabut VIP dari user |
-| Blacklist channel | Tambah/hapus channel dari daftar terlarang |
-| Backup database | Backup data DB langsung via bot |
-| Panel admin | Menu interaktif manajemen user VIP |
+| 📊 Statistik | User, VIP aktif/expired, session online, order, pendapatan |
+| 💳 Pembayaran | Set QRIS penerima, kelola paket & harga, kode unik, batas waktu, verifikasi order |
+| 💾 Auto Backup | Jadwal 6j/12j/24j/3h/7h → PM admin (+ channel opsional), `.sql.gz` |
+| 👑 List VIP / 🔎 Cek User | Daftar VIP berpaginasi; kartu user dengan tombol +7/+30 hari & revoke |
+| 📢 Pengumuman | Kirim pesan (teks/media) ke semua user bot |
+| 🎁 Gift / 🚫 Revoke / 🔒 Blacklist / 📦 Backup / ♻️ Restore | Fitur lama, tetap ada (restore kini terima `.sql.gz`) |
+
+### 💳 Alur Pembayaran
+1. Admin: Panel Admin → Pembayaran → **Set QRIS Bayar** + **Kelola Paket** (`Nama | Hari | Harga`).
+2. User: **Beli / Perpanjang VIP** → pilih paket → QRIS dinamis (nominal otomatis, +kode unik 1–99 jika ON).
+3. User bayar → **Kirim Bukti Bayar**.
+4. Admin menerima notifikasi bukti → cek mutasi → **Approve** → VIP aktif, session tersimpan otomatis jalan lagi.
+
+> Verifikasi bersifat **manual** (QRIS statis tidak punya API notifikasi). Kode unik membantu mencocokkan mutasi.
 
 ---
 
-## 🗂️ Struktur Proyek
+## 🗂️ Struktur Proyek (tambahan v2)
 
 ```
-RamsBot/
-├── main.py                  # Entry point, registrasi semua handler
-├── config.py                # Konfigurasi dari environment variables
-├── database.py              # Semua fungsi PostgreSQL
-├── client_manager.py        # Manajemen Telethon client per user
-├── keyboards.py             # Definisi tombol inline & reply keyboard
-│
-├── auth/
-│   ├── setup.py             # ConversationHandler proses /setup
-│   └── states.py            # State constants & temp_store
-│
-├── admin/
-│   ├── callbacks.py         # Handler callback query admin
-│   ├── gift.py              # Perintah /gift
-│   ├── vip.py               # Perintah /revoke
-│   ├── blacklist.py         # Manajemen blacklist channel
-│   └── backup.py            # Fitur backup database
-│
-├── user/
-│   ├── start.py             # /start, /cancel
-│   ├── download.py          # Fitur download media
-│   ├── copy.py              # Fitur copy pesan
-│   ├── story.py             # Fitur story viewer
-│   ├── auto_dl.py           # Fitur auto download view-once
-│   ├── broadcast.py         # Fitur broadcast pesan
-│   ├── ping.py              # Fitur ping/cek latensi
-│   ├── subscription.py      # Info langganan VIP
-│   ├── tasks.py             # Background tasks
-│   └── callbacks.py         # Handler callback query user
-│
-└── utils/
-    └── helpers.py           # Fungsi utilitas umum
+ui.py                    # Helper tampilan HTML, format tanggal WIB, edit/kirim pesan aman
+scheduler.py             # Auto backup, expire order, pengingat VIP
+services/session_runner.py   # Jalankan ulang session Telethon setelah VIP aktif
+utils/qris.py            # CRC16, parser TLV, validator, konversi statis→dinamis, decode & render QR
+user/qris.py             # .qris + menu setup QRIS
+user/payment.py          # Alur beli/perpanjang di sisi user
+user/inputs.py           # Router upload gambar (QRIS / bukti bayar)
+admin/payments.py        # Pengaturan pembayaran, paket, approve/tolak
+admin/panel.py           # Statistik, list VIP, cek user, pengumuman
+admin/autobackup.py      # Auto backup
 ```
 
 ---
@@ -79,6 +73,10 @@ Tambahkan variabel berikut di Railway (atau `.env` untuk lokal):
 | `API_ID` | ✅ | API ID dari [my.telegram.org](https://my.telegram.org) |
 | `API_HASH` | ✅ | API Hash dari [my.telegram.org](https://my.telegram.org) |
 | `RESTRICTED_CHANNELS` | ❌ | JSON array channel ID yang diblokir, contoh: `[-1001234, -1005678]` |
+| `LOG_CHANNEL_ID` | ❌ | ID channel log admin |
+| `BACKUP_CHANNEL_ID` | ❌ | Channel tujuan auto backup (bisa juga diatur dari menu admin) |
+| `ADMIN_CONTACT` | ❌ | Kontak admin yang tampil ke user (default `@kqrbit`) |
+| `BOT_NAME` | ❌ | Nama di header bot (default `RamsBot`) |
 
 ---
 
@@ -88,7 +86,7 @@ Tambahkan variabel berikut di Railway (atau `.env` untuk lokal):
 2. Buat project baru di [Railway](https://railway.app)
 3. Tambahkan **PostgreSQL** plugin di Railway
 4. Set semua environment variables di atas
-5. Deploy — Railway akan otomatis menjalankan `main.py`
+5. Deploy — Railway menjalankan `python main.py` (lihat `railway.json`, Python 3.12). Tabel baru dibuat otomatis oleh `init_db()`, data lama aman.
 
 ### Jalankan Lokal
 
@@ -98,7 +96,7 @@ git clone https://github.com/gfrrmd/RamsBot.git
 cd RamsBot
 
 # Install dependencies
-pip install python-telegram-bot telethon psycopg2-binary
+pip install -r requirements.txt
 
 # Set environment variables
 export BOT_TOKEN=...
@@ -135,6 +133,10 @@ Session Telethon disimpan di database dan di-load otomatis setiap bot restart.
 | `sessions` | String session Telethon per user |
 | `subscriptions` | Data VIP (plan, paid_at, expired_at, is_active) |
 | `user_settings` | Pengaturan per user (misal: auto_dl_view_once) |
+| `bot_settings` | 🆕 Pengaturan bot (QRIS bayar, auto backup, dll) |
+| `user_qris` | 🆕 QRIS statis per user VIP |
+| `plans` | 🆕 Paket VIP & harga |
+| `orders` | 🆕 Pesanan pembayaran |
 | `blacklist_channels` | Daftar channel yang diblokir admin |
 | `bc_group_blacklist` | Daftar grup yang diblokir per user untuk broadcast |
 
