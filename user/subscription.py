@@ -1,80 +1,27 @@
-import time
-from datetime import datetime, timezone, timedelta
-
-from client_manager import active_clients, _start_time
-from database import get_subscription_info
-
-WIB = timezone(timedelta(hours=7))
-
-
-def _to_wib(dt: datetime) -> datetime:
-    """Konversi datetime (naive/UTC) ke WIB."""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(WIB)
-
-
-def _format_uptime(uid: int) -> str:
-    start = _start_time.get(uid)
-    if start is None:
-        return "—"
-    elapsed = int(time.monotonic() - start)
-    jam = elapsed // 3600
-    menit = (elapsed % 3600) // 60
-    detik = elapsed % 60
-    return f"{jam:02d}:{menit:02d}:{detik:02d}"
+from ui import esc, fmt_dt, fmt_remaining, get_sub_state, header, session_badge, uptime_str
 
 
 def build_subscription_text(uid: int, full_name: str = None, username: str = None) -> str:
-    row = get_subscription_info(uid)
-
-    name_str = full_name or "—"
-    username_str = f"@{username}" if username else "—"
-
-    client = active_clients.get(uid)
-    bot_active = client and client.is_connected()
-    status_bot = "Aktif ✅" if bot_active else "Tidak Aktif ❌"
-
-    uptime_str = _format_uptime(uid)
-
-    if not row:
-        return (
-            "*👤 Status Akun*\n\n"
-            f"Pengguna: {name_str}\n"
-            f"Username: {username_str}\n"
-            f"ID: `{uid}`\n"
-            f"Status Bot: {status_bot}\n"
-            "Plan: —\n"
-            "Expired: —\n"
-            f"Uptime Bot: {uptime_str}"
-        )
-
-    paid_at, expired_at, is_active, plan = row
-    try:
-        exp = _to_wib(datetime.fromisoformat(expired_at))
-        now = datetime.now(WIB)
-
-        if plan == "trial":
-            sisa_detik = max(int((exp - now).total_seconds()), 0)
-            sub_active = is_active and sisa_detik > 0
-            plan_str = "Trial"
+    """Kartu Status Akun (HTML) dengan label seperti RamsBot asli."""
+    s = get_sub_state(uid)
+    uname = "@" + esc(username) if username else "—"
+    if s["state"] == "none":
+        plan, exp, sisa = "—", "—", "—"
+    else:
+        plan = "Trial" if s["plan"] == "trial" else "VIP 💎"
+        exp = esc(fmt_dt(s["expired"]))
+        if s["state"] == "active":
+            sisa = fmt_remaining(s["remaining"])
         else:
-            sisa = (exp.date() - now.date()).days
-            sub_active = is_active and sisa >= 0
-            plan_str = "VIP 💎"
-
-        exp_str = exp.strftime("%d %b %Y, %H:%M WIB")
-        status_bot_final = "Aktif ✅" if bot_active else "Tidak Aktif ❌"
-
-        return (
-            "*👤 Status Akun*\n\n"
-            f"Pengguna: {name_str}\n"
-            f"Username: {username_str}\n"
-            f"ID: `{uid}`\n"
-            f"Status Bot: {status_bot_final}\n"
-            f"Plan: {plan_str}\n"
-            f"Expired: {exp_str}\n"
-            f"Uptime Bot: {uptime_str}"
-        )
-    except Exception:
-        return "⚠️ Data langganan tidak valid."
+            sisa = "Expired ⚠️" if s["state"] == "expired" else "Dicabut 🚫"
+    return (
+        header("👤", "Status Akun") + "\n"
+        f"Pengguna: {esc(full_name)}\n"
+        f"Username: {uname}\n"
+        f"ID: <code>{uid}</code>\n"
+        f"Status Bot: {session_badge(uid)}\n"
+        f"Plan: {plan}\n"
+        f"Expired: {exp}\n"
+        f"Sisa: {sisa}\n"
+        f"Uptime Bot: {uptime_str(uid)}"
+    )
